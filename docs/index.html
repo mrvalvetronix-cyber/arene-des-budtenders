@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>L’arène des budtender · Budtender Arena</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: system-ui, -apple-system, sans-serif; background: #14101f; color: #f2e9ff;
+         display: flex; flex-direction: column; align-items: center; justify-content: center;
+         min-height: 100vh; margin: 0; text-align: center; padding: 1rem; }
+  h1 { font-size: 2.4rem; margin: 0 0 .4rem; }
+  h1 .en { display: block; font-size: 1.3rem; color: #b9a8d6; font-weight: 400; margin-top: .3rem; }
+  .tagline { color: #b9a8d6; max-width: 36rem; margin: .5rem 0 0; }
+  .tagline .en { display: block; margin-top: .4rem; font-size: .95rem; }
+  .langpick { display: flex; gap: 1rem; margin-top: 2rem; flex-wrap: wrap; justify-content: center; }
+  a.lang { display: flex; flex-direction: column; align-items: center; gap: .3rem;
+           padding: 1.2rem 2.2rem; border-radius: 1rem; text-decoration: none; font-weight: 700;
+           font-size: 1.15rem; border: 2px solid #8a5cf6; color: #fff; background: #241a3d;
+           min-width: 13rem; transition: transform .12s, background .12s; }
+  a.lang small { font-weight: 400; color: #b9a8d6; font-size: .9rem; }
+  a.lang:hover { background: #8a5cf6; transform: translateY(-2px); }
+  .note { margin-top: 2.2rem; font-size: .85rem; color: #8f7fb3; max-width: 34rem; }
+</style>
+</head>
+<body>
+  <h1>🌿 L’arène des budtender<span class="en">Budtender Arena</span></h1>
+  <p class="tagline">
+    Jeu questionnaire multijoueur — affronte tes amis en temps réel, même deck de questions, classement en direct.
+    <span class="en">Multiplayer quiz game — challenge your friends live, same question deck, live leaderboard.</span>
+  </p>
+  <div class="langpick">
+    <a class="lang" href="multi-mqtt.html">🇫🇷 Français<small>Entrer dans l’arène</small></a>
+    <a class="lang" href="en/multi-mqtt.html">🇬🇧 English<small>Enter the arena</small></a>
+  </div>
+  <p class="note">Multijoueur via relais public — aucun compte requis. · Multiplayer over a public relay — no account needed.<br>21+ · Jeu destiné aux adultes · Adult game</p>
+</body>
+</html>

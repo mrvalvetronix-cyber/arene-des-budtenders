@@ -1,0 +1,766 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="color-scheme" content="light dark" />
+<link rel="icon" href="data:," />
+<title>L’arène des budtender · Multijoueur</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Azeret+Mono:wght@600;700;800&family=Bricolage+Grotesque:opsz,wght@12..96,500;600;700;800&display=swap');
+:root{
+  color-scheme: light dark;
+  --bg:#899681; --cabinet:#536052; --paper:#e6e5c8; --ink:#14251a; --muted:#405142;
+  --on-green:#ffffff; --muted-cabinet:#d3e2c4; --line:#15291d;
+  --green:#286f43; --green-2:#62a35e; --mint:#b9d5a8;
+  --amber:#d99b38; --amber-2:#edcb73; --red:#9e4637; --shadow:#0b160d59;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0b120d; --cabinet:#1b281e; --paper:#18241b; --ink:#dcf2bd; --muted:#a5b899;
+    --on-green:#0d1a10; --muted-cabinet:#a5b899; --line:#78945f;
+    --green:#75b956; --green-2:#9ccc67; --mint:#29402b;
+    --amber:#efb34a; --amber-2:#5d471c; --red:#ee806d; --shadow:#0000006b;
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{background:var(--bg);color:var(--ink);font-family:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;overscroll-behavior:none}
+button{font:inherit;color:inherit}
+button:focus-visible{outline:3px solid var(--amber);outline-offset:3px}
+.app{width:min(100%,760px);min-height:100dvh;margin:0 auto;background:var(--cabinet);position:relative;overflow:hidden;box-shadow:0 0 60px var(--shadow)}
+.hud{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:calc(10px + env(safe-area-inset-top)) 14px 10px;border-bottom:3px solid var(--line);background:var(--paper);position:sticky;top:0;z-index:5}
+.hud .brand{font:800 15px/1 "Azeret Mono",monospace;color:var(--green);text-transform:uppercase;letter-spacing:.04em}
+.hud .brand small{display:block;font-size:9px;color:var(--muted);letter-spacing:.14em;margin-top:3px}
+.conn{display:flex;align-items:center;gap:6px;font:700 11px/1 "Azeret Mono",monospace;color:var(--muted)}
+.conn .dot{width:10px;height:10px;border-radius:50%;background:var(--red);border:2px solid var(--line)}
+.conn.on .dot{background:var(--green-2)}
+.screen{padding:16px 14px calc(26px + env(safe-area-inset-bottom))}
+.hidden{display:none!important}
+.panel{border:3px solid var(--line);background:var(--paper);padding:20px 17px;box-shadow:8px 8px 0 var(--line)}
+.panel h1{font-size:clamp(26px,7vw,36px);line-height:1;margin:0 0 6px}
+.panel h2{margin:0 0 10px;font-size:clamp(22px,6vw,30px)}
+.panel h3{margin:16px 0 8px;font:800 12px/1 "Azeret Mono",monospace;color:var(--green);text-transform:uppercase;letter-spacing:.06em}
+.tagline{margin:0 0 16px;color:var(--muted);line-height:1.4}
+.lede{color:var(--muted);line-height:1.4;margin:0 0 14px}
+.nametag{display:block;margin:0 0 12px;padding:8px;border:2px solid var(--line);border-radius:8px;background:var(--green);box-shadow:4px 4px 0 var(--line)}
+.nametag span{display:block;padding:2px 4px 7px;color:var(--on-green);font:800 10px/1 "Azeret Mono",monospace;text-transform:uppercase;letter-spacing:.06em}
+.nametag input,.code-input{width:100%;min-height:48px;border:2px solid var(--line);border-radius:4px;background:var(--paper);color:var(--ink);padding:9px 11px;text-align:center;font:800 19px/1 "Azeret Mono",monospace}
+.code-input{text-transform:uppercase;letter-spacing:.4em}
+.primary,.secondary{width:100%;min-height:52px;border:2px solid var(--line);padding:11px 14px;font-weight:800;cursor:pointer;margin-top:10px}
+.primary{background:var(--green);color:var(--on-green);box-shadow:4px 4px 0 var(--line)}
+.secondary{background:transparent}
+.primary:active,.secondary:active{transform:translate(2px,2px);box-shadow:none}
+.primary:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
+.fine{margin-top:12px;font-size:12px;color:var(--muted);line-height:1.35}
+.mode-cards{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:4px 0 12px}
+.mode-card{border:2px solid var(--line);background:var(--cabinet);color:var(--ink);padding:10px;cursor:pointer;text-align:left;min-height:86px}
+.mode-card b{display:block;font-size:14px;margin-bottom:4px}
+.mode-card span{font-size:11px;color:var(--muted-cabinet);line-height:1.25;display:block}
+.mode-card.selected{background:var(--mint);box-shadow:3px 3px 0 var(--line)}
+.mode-card.selected span{color:var(--ink)}
+.row{display:flex;gap:8px;align-items:center}
+.row .secondary,.row .primary{margin-top:0}
+select,input[type=text]{font:inherit}
+/* ---- Lobby ---- */
+.room-code-box{display:flex;align-items:center;justify-content:space-between;gap:10px;border:2px dashed var(--green);background:var(--mint);padding:10px 12px;margin-bottom:6px}
+.room-code-box .lbl{font:800 11px/1.3 "Azeret Mono",monospace;color:var(--green);text-transform:uppercase}
+.room-code-box b{font:800 30px/1 "Azeret Mono",monospace;letter-spacing:.18em}
+.mini-btn{border:2px solid var(--line);background:var(--paper);padding:8px 10px;font-weight:800;cursor:pointer;font-size:12px}
+#playerList{list-style:none;margin:0 0 6px;padding:0;display:grid;gap:6px}
+#playerList li{display:flex;align-items:center;gap:8px;border:2px solid var(--line);background:var(--cabinet);padding:8px 10px;font-weight:700}
+#playerList li.me{background:var(--mint)}
+#playerList .teamdot{width:14px;height:14px;border-radius:50%;border:2px solid var(--line);flex:0 0 auto}
+#playerList .host{margin-left:auto;font:700 10px/1 "Azeret Mono",monospace;color:var(--amber);text-transform:uppercase}
+#playerList .disc{margin-left:auto;font-size:11px;color:var(--muted)}
+.team-chip{display:inline-flex;align-items:center;gap:6px;border:2px solid var(--line);padding:7px 10px;margin:0 6px 6px 0;cursor:pointer;font-weight:800;font-size:13px;background:var(--cabinet)}
+.team-chip.mine{box-shadow:3px 3px 0 var(--line);background:var(--mint)}
+.team-chip .teamdot{width:12px;height:12px;border-radius:50%;border:2px solid var(--line)}
+.team-add{display:flex;gap:6px;margin-top:4px}
+.team-add input{flex:1;min-height:42px;border:2px solid var(--line);background:var(--paper);color:var(--ink);padding:6px 10px;font-weight:700}
+/* ---- Jeu ---- */
+.game-layout{display:grid;gap:12px}
+@media(min-width:700px){.game-layout{grid-template-columns:1fr 250px;align-items:start}}
+.quest-card{border:3px solid var(--line);background:var(--paper);padding:16px 14px;box-shadow:6px 6px 0 var(--line)}
+.quest-meta{display:flex;justify-content:space-between;gap:8px;align-items:flex-start;margin-bottom:8px}
+.quest-no{font:700 11px/1.4 "Azeret Mono",monospace;color:var(--green);text-transform:uppercase;letter-spacing:.05em}
+.quest-no,.quiz-source{text-shadow:-1px -1px 0 var(--ink),1px -1px 0 var(--ink),-1px 1px 0 var(--ink),1px 1px 0 var(--ink)}
+.quest-card h2{font-size:clamp(20px,5.5vw,26px);margin:2px 0 8px;line-height:1.05}
+.speech{border:2px solid var(--line);background:var(--mint);border-radius:12px 12px 12px 3px;padding:10px 12px;margin:0 0 10px;font-size:14px;line-height:1.35}
+.speech b{color:var(--green)}
+.prompt{color:var(--muted);margin:0 0 12px;line-height:1.35;font-size:15px}
+.options{display:grid;gap:9px}
+.choice{width:100%;min-height:52px;border:2px solid var(--line);border-radius:10px 3px 10px 3px;background:var(--paper);text-align:left;padding:10px 40px 10px 13px;cursor:pointer;font-weight:700;font-size:15px;position:relative;box-shadow:3px 3px 0 var(--line);touch-action:manipulation}
+.choice::after{content:"›";position:absolute;right:14px;top:50%;transform:translateY(-53%);font:800 24px/1 "Azeret Mono",monospace;color:var(--green)}
+.choice:active{transform:translate(3px,3px);box-shadow:0 0 0 var(--line)}
+.choice.correct{background:var(--mint)}
+.choice.wrong{background:color-mix(in srgb,var(--red) 22%,var(--paper))}
+.choice:disabled{cursor:default;color:var(--ink);opacity:1}
+.consult-log{display:grid;gap:5px;margin:0 0 9px}
+.consult-line{padding:8px 10px;border-left:3px solid var(--green);background:var(--mint);font-size:12px;line-height:1.3}
+.quiz-ribbon{display:flex;justify-content:space-between;align-items:center;background:var(--amber);border:2px solid var(--line);padding:8px 12px;margin:-16px -14px 12px;font:800 12px/1 "Azeret Mono",monospace;text-transform:uppercase}
+.timerbar{height:8px;border:2px solid var(--line);background:var(--paper);margin:0 0 10px}
+.timerbar i{display:block;height:100%;background:var(--amber);width:100%;transition:width 1s linear}
+.timerbar.low i{background:var(--red)}
+.result-strip{display:none;margin-top:12px;padding:12px;border:2px solid var(--line);background:var(--mint)}
+.result-strip.show{display:block}
+.result-strip b{display:block;font-size:15px}
+.result-strip span{display:block;color:var(--muted);font-size:13px;margin-top:3px;line-height:1.3}
+.next{margin-top:10px;min-height:46px;padding:9px 13px;border:2px solid var(--line);background:var(--green);color:var(--on-green);font-weight:800;cursor:pointer;box-shadow:3px 3px 0 var(--line);width:100%}
+/* ---- Panneau live ---- */
+.live-panel{border:3px solid var(--line);background:var(--paper);padding:12px;box-shadow:6px 6px 0 var(--line)}
+.live-panel h3{margin:0 0 8px;font:800 12px/1 "Azeret Mono",monospace;color:var(--green);text-transform:uppercase}
+#liveBoard{list-style:none;margin:0 0 10px;padding:0;display:grid;gap:5px;max-height:300px;overflow:auto}
+#liveBoard li{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:700;border-bottom:1px dashed color-mix(in srgb,var(--line) 40%,transparent);padding:4px 0}
+#liveBoard li.me{background:var(--mint);border-radius:6px;padding:4px 6px}
+#liveBoard .rk{font:800 12px/1 "Azeret Mono",monospace;width:30px;color:var(--muted)}
+#liveBoard .pts{margin-left:auto;font:800 13px/1 "Azeret Mono",monospace}
+#liveBoard .prog{font-size:10px;color:var(--muted);font-weight:600}
+.team-battle{margin:0 0 10px}
+.team-battle .tbar{display:flex;height:22px;border:2px solid var(--line);overflow:hidden;border-radius:11px}
+.team-battle .tbar i{display:block;height:100%;transition:width .5s ease}
+.team-battle .tlabels{display:flex;justify-content:space-between;font:700 10px/1.4 "Azeret Mono",monospace;margin-top:3px}
+/* ---- Podium ---- */
+#podium{display:flex;align-items:flex-end;justify-content:center;gap:8px;margin:14px 0}
+.pstep{text-align:center;min-width:86px}
+.pstep .who{font-weight:800;font-size:13px;margin-bottom:4px}
+.pstep .block{border:3px solid var(--line);display:grid;place-items:center;font:800 22px/1 "Azeret Mono",monospace}
+.pstep.p1 .block{height:110px;background:var(--amber);font-size:30px}
+.pstep.p2 .block{height:80px;background:var(--mint)}
+.pstep.p3 .block{height:60px;background:var(--amber-2)}
+.pstep .pts{font:700 11px/1 "Azeret Mono",monospace;margin-top:4px;color:var(--muted)}
+#finalBoard{list-style:none;margin:0;padding:0;display:grid;gap:5px}
+#finalBoard li{display:flex;gap:8px;align-items:center;border:2px solid var(--line);background:var(--cabinet);padding:8px 10px;font-weight:700;font-size:14px}
+#finalBoard .pts{margin-left:auto;font-family:"Azeret Mono",monospace}
+#teamResults{display:grid;gap:6px;margin:0 0 10px}
+#teamResults .trow{display:flex;align-items:center;gap:8px;border:2px solid var(--line);padding:8px 10px;font-weight:800}
+#teamResults .teamdot{width:14px;height:14px;border-radius:50%;border:2px solid var(--line)}
+.toast{position:fixed;top:74px;left:50%;z-index:60;transform:translate(-50%,-16px);opacity:0;width:max-content;max-width:84%;text-align:center;background:var(--ink);color:var(--paper);padding:9px 13px;border:2px solid var(--paper);font:700 11px/1.3 "Azeret Mono",monospace;pointer-events:none;transition:.2s}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.applauds{position:fixed;inset:0;pointer-events:none;z-index:55;overflow:hidden}
+.applauds span{position:absolute;bottom:-40px;font-size:30px;animation:rise 1.8s ease-out forwards}
+@keyframes rise{to{transform:translateY(-110vh) rotate(30deg);opacity:0}}
+.confetti{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:58}
+.confetti i{position:absolute;width:9px;height:14px;top:-20px;animation:cfall 1.8s ease-in forwards}
+@keyframes cfall{to{transform:translate(var(--drift),110vh) rotate(720deg)}}
+.turn-banner{border:2px solid var(--line);background:var(--amber-2);padding:10px 12px;font-weight:800;margin-bottom:10px;text-align:center}
+.turn-banner.mine{background:var(--mint);animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 5px color-mix(in srgb,var(--green) 25%,transparent)}}
+.wait-note{text-align:center;color:var(--muted);padding:26px 10px;line-height:1.5}
+.spectate .choice{opacity:.85}
+.spectate .choice::after{content:""}
+</style>
+</head>
+<body>
+<main class="app" id="app">
+  <header class="hud">
+    <div class="brand">L’arène des budtender<small>· multijoueur ·</small></div>
+    <div class="conn" id="conn"><span class="dot"></span><span id="connText">hors ligne</span></div>
+  </header>
+
+  <!-- ACCUEIL -->
+  <section class="screen" id="screen-home">
+    <div class="panel">
+      <h1>Le comptoir<br>s’anime. 🎮</h1>
+      <p class="tagline">Affronte tes amis en temps réel : même deck de questions, classement en direct, et la gloire du meilleur budtender.</p>
+      <label class="nametag" for="pseudo"><span>Ton pseudo</span>
+        <input id="pseudo" type="text" maxlength="16" autocomplete="off" placeholder="Ex. Véro" />
+      </label>
+      <button class="primary" id="btnShowCreate">Créer une partie</button>
+      <button class="secondary" id="btnShowJoin">Rejoindre avec un code</button>
+      <div id="createBox" class="hidden">
+        <h3>Mode de jeu</h3>
+        <div class="mode-cards">
+          <button class="mode-card selected" id="modeSimu"><b>⚡ Simultané</b><span>Chacun joue à son rythme. Rapidité = bonus!</span></button>
+          <button class="mode-card" id="modeTours"><b>🔄 Tour par tour</b><span>Chacun son tour devant tout le monde. 20 s par question.</span></button>
+        </div>
+        <h3>Équipes</h3>
+        <div class="mode-cards">
+          <button class="mode-card selected" id="teamsOn"><b>🌿 Oui</b><span>Indica vs Sativa… ou tes propres équipes!</span></button>
+          <button class="mode-card" id="teamsOff"><b>👤 Non</b><span>Chacun pour soi.</span></button>
+        </div>
+        <h3>Joueurs max</h3>
+        <div class="row">
+          <select id="maxPlayers" class="mini-btn" style="flex:1;min-height:46px">
+            <option>2</option><option>3</option><option>4</option><option selected>6</option><option>8</option><option>12</option>
+          </select>
+        </div>
+        <button class="primary" id="btnCreate">Créer la salle</button>
+      </div>
+      <div id="joinBox" class="hidden">
+        <h3>Code de la salle (4 lettres)</h3>
+        <input id="roomCode" class="code-input" maxlength="4" autocomplete="off" placeholder="····" />
+        <button class="primary" id="btnJoin">Rejoindre la partie</button>
+      </div>
+      <p class="fine">Jeu destiné aux adultes (21+). Les questions reprennent le quart d’initiation du jeu solo : terpènes, loi québécoise et service au comptoir.</p>
+    </div>
+  </section>
+
+  <!-- LOBBY -->
+  <section class="screen hidden" id="screen-lobby">
+    <div class="panel">
+      <div class="room-code-box">
+        <div><div class="lbl">Code de la salle — partage-le!</div><b id="lobbyCode">····</b></div>
+        <button class="mini-btn" id="btnCopyCode">Copier</button>
+      </div>
+      <p class="lede" id="lobbyMode" style="margin-bottom:4px"></p>
+      <div id="teamSection">
+        <h3>Équipes — touche pour changer</h3>
+        <div id="teamChips"></div>
+        <div class="team-add" id="teamAddRow">
+          <input id="newTeamName" maxlength="14" placeholder="Nouvelle équipe…" />
+          <button class="mini-btn" id="btnAddTeam">+ Ajouter</button>
+          <button class="mini-btn" id="btnShuffleTeams">🎲 Répartir</button>
+        </div>
+      </div>
+      <h3>Joueurs · <span id="playerCount">0</span></h3>
+      <ul id="playerList"></ul>
+      <button class="primary hidden" id="btnStart">Démarrer la partie 🚀</button>
+      <button class="secondary" id="btnLeave">Quitter la salle</button>
+    </div>
+  </section>
+
+  <!-- JEU -->
+  <section class="screen hidden" id="screen-game">
+    <div class="game-layout">
+      <div class="quest-card" id="questCard"></div>
+      <aside class="live-panel">
+        <div class="team-battle hidden" id="teamBattle">
+          <div class="tbar" id="teamBar"></div>
+          <div class="tlabels" id="teamLabels"></div>
+        </div>
+        <h3>🏆 En direct</h3>
+        <ol id="liveBoard"></ol>
+        <button class="mini-btn" id="btnApplaud" style="width:100%">👏 Applaudir</button>
+        <button class="secondary hidden" id="btnEndEarly" style="margin-top:8px">Terminer la manche (hôte)</button>
+      </aside>
+    </div>
+  </section>
+
+  <!-- FINAL -->
+  <section class="screen hidden" id="screen-final">
+    <div class="panel">
+      <h2 id="finalTitle">Partie terminée! 🎉</h2>
+      <div id="podium"></div>
+      <div id="teamResults"></div>
+      <h3>Classement final</h3>
+      <ol id="finalBoard"></ol>
+      <button class="primary hidden" id="btnToLobby">Nouvelle manche (hôte)</button>
+      <button class="secondary" id="btnLeave2">Quitter</button>
+    </div>
+  </section>
+
+  <div class="toast" id="toast"></div>
+  <div class="applauds" id="applauds"></div>
+  <div class="confetti" id="confetti"></div>
+</main>
+<script src="/game-data.js"></script>
+<script>
+(function(){
+'use strict';
+/* ================= État global ================= */
+var G = {
+  ws:null, connected:false, reconnectTimer:null,
+  code:null, name:null, isHost:false,
+  mode:'simu', teamsEnabled:false, teams:[],
+  players:[], phase:'lobby',
+  // partie simultanée
+  deck:[], idx:0, coins:0, correct:0, qStart:0, locked:false, quizTimer:null,
+  // tour par tour
+  myTurn:false, turnDeadline:0, turnTick:null,
+  audioCtx:null
+};
+var $ = function(id){ return document.getElementById(id); };
+function show(id){ ['screen-home','screen-lobby','screen-game','screen-final'].forEach(function(s){ $(s).classList.toggle('hidden', s!==id); }); window.scrollTo(0,0); }
+function toast(t){ var el=$('toast'); el.textContent=t; el.classList.add('show'); clearTimeout(el._h); el._h=setTimeout(function(){el.classList.remove('show');},1600); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+function beep(f,d,type){ try{ G.audioCtx=G.audioCtx||new (window.AudioContext||window.webkitAudioContext)(); if(G.audioCtx.state==='suspended')G.audioCtx.resume(); var o=G.audioCtx.createOscillator(),g=G.audioCtx.createGain(); o.type=type||'square'; o.frequency.value=f; g.gain.setValueAtTime(.05,G.audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(.001,G.audioCtx.currentTime+d); o.connect(g); g.connect(G.audioCtx.destination); o.start(); o.stop(G.audioCtx.currentTime+d);}catch(e){} }
+function shuffled(a){ a=a.slice(); for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1)),t=a[i];a[i]=a[j];a[j]=t;} return a; }
+function teamOf(p){ return (G.teamsEnabled && p.team>=0 && G.teams[p.team]) ? G.teams[p.team] : null; }
+function medal(i){ return i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1)+'.'; }
+
+/* ================= Connexion ================= */
+function wsUrl(){
+  var proto = location.protocol === 'https:' ? 'wss://' : 'ws://';
+  return proto + location.host + '/';
+}
+function setConn(on, label){
+  $('conn').classList.toggle('on', on);
+  $('connText').textContent = label || (on ? 'en ligne' : 'hors ligne');
+}
+function connect(cb){
+  if (G.ws) { try { G.ws.close(); } catch(e){} }
+  var ws = new WebSocket(wsUrl());
+  G.ws = ws;
+  ws.onopen = function(){
+    G.connected = true; setConn(true);
+    if (cb) cb();
+  };
+  ws.onmessage = function(ev){
+    var m; try { m = JSON.parse(ev.data); } catch(e){ return; }
+    onMessage(m);
+  };
+  ws.onclose = function(){
+    G.connected = false; setConn(false, 'reconnexion…');
+    if (G.code && G.name) {
+      clearTimeout(G.reconnectTimer);
+      G.reconnectTimer = setTimeout(function(){ connect(function(){ send({t:'join', code:G.code, name:G.name}); }); }, 2000);
+      toast('Connexion perdue — reconnexion…');
+    }
+  };
+  ws.onerror = function(){};
+}
+function send(m){ if (G.ws && G.ws.readyState === 1) G.ws.send(JSON.stringify(m)); }
+
+/* ================= Messages reçus ================= */
+function onMessage(m){
+  if (m.t === 'error') { toast(m.msg); beep(150,.15,'sawtooth'); return; }
+  if (m.t === 'hello') { G.name = m.you; try { localStorage.setItem('bq-pseudo', m.you); } catch(e){} return; }
+  if (m.t === 'state') { applyState(m); return; }
+  if (m.t === 'start') { onStart(m); return; }
+  if (m.t === 'leaderboard') { renderLive(m.players, m.teams); return; }
+  if (m.t === 'turn') { onTurn(m); return; }
+  if (m.t === 'turn_result') { onTurnResult(m); return; }
+  if (m.t === 'applaud') { doApplaud(m.from); return; }
+  if (m.t === 'over') { onOver(m); return; }
+}
+
+function applyState(m){
+  G.code = m.code; G.phase = m.phase; G.mode = m.mode;
+  G.teamsEnabled = m.teamsEnabled; G.teams = m.teams || [];
+  G.players = m.players || [];
+  var me = G.players.filter(function(p){ return p.name === G.name; })[0];
+  G.isHost = !!(me && me.isHost);
+  if (m.phase === 'lobby') renderLobby();
+  else if (m.phase === 'play') { renderLive(G.players, G.teams); }
+}
+
+function modeLabel(){
+  return (G.mode === 'tours' ? '🔄 Tour par tour' : '⚡ Simultané') + (G.teamsEnabled ? ' · 🌿 équipes' : ' · 👤 solo');
+}
+
+/* ================= Lobby ================= */
+function renderLobby(){
+  show('screen-lobby');
+  $('lobbyCode').textContent = G.code;
+  $('lobbyMode').textContent = modeLabel() + ' — ' + esc(GAME_DATA.shiftName);
+  $('playerCount').textContent = G.players.length + '/' + $('maxPlayers').value;
+  $('teamSection').classList.toggle('hidden', !G.teamsEnabled);
+  // équipes
+  var chips = $('teamChips'); chips.innerHTML = '';
+  var me = G.players.filter(function(p){ return p.name === G.name; })[0];
+  G.teams.forEach(function(t, i){
+    var b = document.createElement('button');
+    b.className = 'team-chip' + (me && me.team === i ? ' mine' : '');
+    b.innerHTML = '<span class="teamdot" style="background:' + esc(t.color) + '"></span>' + esc(t.emoji) + ' ' + esc(t.name) + ' <small>(' + t.count + ')</small>';
+    b.addEventListener('click', function(){ send({t:'set_team', team:i}); });
+    chips.appendChild(b);
+  });
+  $('teamAddRow').classList.toggle('hidden', !G.isHost);
+  // joueurs
+  var ul = $('playerList'); ul.innerHTML = '';
+  G.players.forEach(function(p){
+    var li = document.createElement('li');
+    if (p.name === G.name) li.className = 'me';
+    var dot = '';
+    var tm = teamOf(p);
+    if (tm) dot = '<span class="teamdot" style="background:' + esc(tm.color) + '" title="' + esc(tm.name) + '"></span>';
+    li.innerHTML = dot + esc(p.name) +
+      (p.isHost ? '<span class="host">hôte</span>' : '') +
+      (!p.connected ? '<span class="disc">déconnecté</span>' : '');
+    ul.appendChild(li);
+  });
+  $('btnStart').classList.toggle('hidden', !G.isHost);
+}
+
+/* ================= Classement live ================= */
+function renderLive(players, teams){
+  G.players = players || G.players;
+  if (teams) G.teams = teams;
+  var ol = $('liveBoard'); if (!ol) return;
+  ol.innerHTML = '';
+  (players || []).forEach(function(p, i){
+    var li = document.createElement('li');
+    if (p.name === G.name) li.className = 'me';
+    var tm = teamOf(p);
+    var dot = tm ? '<span class="teamdot" style="background:' + esc(tm.color) + ';width:11px;height:11px;border-radius:50%;border:2px solid var(--line);display:inline-block"></span>' : '';
+    li.innerHTML = '<span class="rk">' + medal(i) + '</span>' + dot + '<span>' + esc(p.name) + (p.finished ? ' ✓' : '') + '</span>' +
+      '<span class="prog">' + (p.progress || 0) + '/14</span><span class="pts">' + p.coins + '</span>';
+    ol.appendChild(li);
+  });
+  // barre d'équipes
+  var battle = $('teamBattle');
+  if (G.teamsEnabled && teams && teams.length) {
+    battle.classList.remove('hidden');
+    var total = teams.reduce(function(s, t){ return s + t.score; }, 0) || 1;
+    var bar = $('teamBar'); bar.innerHTML = '';
+    var labels = [];
+    teams.forEach(function(t){
+      var w = Math.max(t.score > 0 ? 6 : 0, t.score / total * 100);
+      var seg = document.createElement('i');
+      seg.style.width = w + '%'; seg.style.background = t.color;
+      seg.title = t.name + ' : ' + t.score;
+      bar.appendChild(seg);
+      labels.push('<span>' + esc(t.emoji) + ' ' + esc(t.name) + ' · ' + t.score + '</span>');
+    });
+    $('teamLabels').innerHTML = labels.join('');
+  } else battle.classList.add('hidden');
+}
+
+function doApplaud(from){
+  var box = $('applauds');
+  for (var i = 0; i < 6; i++) {
+    var s = document.createElement('span');
+    s.textContent = '👏';
+    s.style.left = (5 + Math.random() * 90) + '%';
+    s.style.animationDelay = (Math.random() * .5) + 's';
+    box.appendChild(s);
+    (function(el){ setTimeout(function(){ el.remove(); }, 2400); })(s);
+  }
+  toast('👏 ' + from);
+  beep(660, .07, 'triangle');
+}
+
+/* ================= Démarrage ================= */
+function onStart(m){
+  if (G.phase === 'play' && G.started) return; // ignore les doublons (reconnexion)
+  G.started = true; G.phase = 'play';
+  G.mode = m.mode;
+  show('screen-game');
+  $('btnEndEarly').classList.toggle('hidden', !(G.isHost && m.mode === 'simu'));
+  renderLive(G.players, G.teams);
+  if (m.mode === 'simu') startSimu(m.deck);
+  else startTours(m.turnMs);
+}
+function questCardHTML(){ return $('questCard'); }
+
+/* ================= Mode simultané ================= */
+function startSimu(deck){
+  G.deck = deck; G.idx = 0; G.coins = 0; G.correct = 0; G.finished = false;
+  renderSimuQuestion();
+  pushScore(false);
+}
+function pushScore(finished){
+  G.finished = !!finished;
+  send({ t:'score', coins:G.coins, correct:G.correct, progress:G.idx, finished:G.finished });
+}
+function deckItem(i){ return G.deck[i]; }
+function itemData(it){
+  if (it.kind === 'quiz') { var z = GAME_DATA.quiz[it.id]; return { kind:'quiz', source:z.source, prompt:z.q, options:z.a, answer:z.ok, reward:GAME_DATA.quizReward, fact:z.fact }; }
+  var q = GAME_DATA.quests[it.id];
+  return { kind:'quest', title:q.title, speech:q.speech, prompt:q.prompt, options:q.options, answer:q.answer, reward:q.reward, success:q.success, fail:q.fail, consultation:q.consultation || null };
+}
+function renderSimuQuestion(){
+  clearInterval(G.quizTimer);
+  G.locked = false;
+  var card = questCardHTML();
+  if (G.idx >= G.deck.length) { renderWaiting(); pushScore(true); return; }
+  var d = itemData(deckItem(G.idx));
+  G.qStart = Date.now();
+  var head = '<div class="quest-meta"><div><div class="quest-no">Question ' + (G.idx + 1) + ' / ' + G.deck.length + ' · ' + esc(GAME_DATA.shiftName) + '</div>' +
+    (d.kind === 'quest' ? '<h2>' + esc(d.title) + '</h2>' : '') + '</div>' +
+    '<div class="reward" style="flex:0 0 auto;font:700 11px/1 \'Azeret Mono\',monospace;background:var(--amber-2);border:2px solid var(--line);padding:7px 8px">+' + d.reward + ' 🪙</div></div>';
+  if (d.kind === 'quiz') {
+    card.innerHTML = head +
+      '<div class="quiz-ribbon"><span>⚡ Quiz éclair</span><span id="quizSecs">8</span></div>' +
+      '<div class="timerbar" id="quizBar"><i></i></div>' +
+      '<div class="quiz-source">' + esc(d.source) + '</div>' +
+      '<p class="prompt" style="font-size:20px;font-weight:800;color:var(--ink)">' + esc(d.prompt) + '</p>' +
+      '<div class="options" id="qOptions"></div><div class="result-strip" id="qResult"><b id="qResultT"></b><span id="qResultX"></span><button class="next" id="qNext">Suivant ›</button></div>';
+    renderOptions($('qOptions'), d, false);
+    startQuizTimer(d);
+  } else if (d.consultation) {
+    card.innerHTML = head +
+      '<div class="speech">' + d.speech + '</div>' +
+      '<p class="prompt" id="qPrompt">' + esc(d.consultation.intro) + '</p>' +
+      '<div class="consult-log" id="consultLog"></div>' +
+      '<div class="options" id="qOptions"></div><div class="result-strip" id="qResult"><b id="qResultT"></b><span id="qResultX"></span><button class="next" id="qNext">Suivant ›</button></div>';
+    renderConsultQuestions(d);
+  } else {
+    card.innerHTML = head +
+      '<div class="speech">' + d.speech + '</div>' +
+      '<p class="prompt">' + esc(d.prompt) + '</p>' +
+      '<div class="options" id="qOptions"></div><div class="result-strip" id="qResult"><b id="qResultT"></b><span id="qResultX"></span><button class="next" id="qNext">Suivant ›</button></div>';
+    renderOptions($('qOptions'), d, false);
+  }
+}
+function renderOptions(box, d, spectate){
+  box.innerHTML = '';
+  shuffled(d.options.map(function(label, i){ return { label:label, i:i }; })).forEach(function(item){
+    var b = document.createElement('button');
+    b.className = 'choice'; b.textContent = item.label;
+    b.disabled = !!spectate;
+    if (!spectate) b.addEventListener('click', function(){ answerSimu(item.i, d, b); });
+    box.appendChild(b);
+  });
+}
+function renderConsultQuestions(d){
+  var box = $('qOptions'); box.innerHTML = '';
+  var asked = 0;
+  shuffled(d.consultation.questions.map(function(q, i){ return { q:q, i:i }; })).forEach(function(item){
+    var b = document.createElement('button');
+    b.className = 'choice'; b.textContent = item.q.label;
+    b.addEventListener('click', function(){
+      if (b.disabled) return; b.disabled = true; b.classList.add('correct'); b.textContent = '✓ ' + b.textContent;
+      var line = document.createElement('div'); line.className = 'consult-line';
+      line.innerHTML = '<strong>Client :</strong> ' + esc(item.q.reply);
+      $('consultLog').appendChild(line); beep(420, .06, 'triangle');
+      if (++asked === d.consultation.questions.length) {
+        $('qPrompt').textContent = 'Choisis maintenant la recommandation la plus adaptée.';
+        setTimeout(function(){
+          box.innerHTML = '';
+          renderOptions(box, { kind:'quest', options:d.consultation.options, answer:d.consultation.answer, reward:d.reward, success:d.consultation.success, fail:d.consultation.fail }, false);
+        }, 350);
+      }
+    });
+    box.appendChild(b);
+  });
+}
+function speedBonus(){
+  var s = (Date.now() - G.qStart) / 1000;
+  return s <= 10 ? 5 : 0;
+}
+function answerSimu(choice, d, btn){
+  if (G.locked) return; G.locked = true;
+  clearInterval(G.quizTimer);
+  var good = choice === d.answer;
+  var box = $('qOptions');
+  var btns = box.querySelectorAll('button');
+  btns.forEach(function(b){ b.disabled = true; });
+  // retrouver le bon bouton : on marque via l'index d'option d'origine
+  var items = Array.prototype.slice.call(btns);
+  // (les boutons sont mélangés : on compare le texte)
+  var labels = d.options;
+  btns.forEach(function(b){
+    var orig = labels.indexOf(b.textContent.replace(/^✓ /, ''));
+    if (orig === d.answer) b.classList.add('correct');
+  });
+  var bonus = 0, earned = 0;
+  if (good) {
+    bonus = speedBonus();
+    earned = d.reward + bonus;
+    G.coins += earned; G.correct++;
+    beep(620, .08, 'square'); setTimeout(function(){ beep(880, .12, 'square'); }, 90);
+  } else {
+    if (btn) btn.classList.add('wrong');
+    beep(130, .18, 'sawtooth');
+  }
+  $('qResultT').textContent = good ? ('Bonne réponse! +' + earned + ' 🪙' + (bonus ? ' (dont +5 rapidité ⚡)' : '')) : 'Raté!';
+  $('qResultX').textContent = good ? (d.kind === 'quiz' ? d.fact : d.success) : (d.kind === 'quiz' ? 'La bonne réponse est donnée — +0.' : d.fail);
+  $('qResult').classList.add('show');
+  $('qNext').addEventListener('click', function(){ G.idx++; renderSimuQuestion(); pushScore(false); });
+  pushScore(false);
+}
+function startQuizTimer(d){
+  var total = 8, left = total;
+  var bar = $('quizBar'), secs = $('quizSecs');
+  G.quizTimer = setInterval(function(){
+    left--;
+    if (secs) secs.textContent = left;
+    if (bar) { bar.querySelector('i').style.width = (left / total * 100) + '%'; bar.classList.toggle('low', left <= 3); }
+    if (left <= 0) {
+      clearInterval(G.quizTimer);
+      if (!G.locked) { G.locked = true; answerSimu(-1, d, null); }
+    }
+  }, 1000);
+}
+function renderWaiting(){
+  questCardHTML().innerHTML =
+    '<div class="wait-note"><div style="font-size:40px">⏳</div><h2>Quart terminé!</h2>' +
+    '<p>Tu as <b>' + G.coins + ' 🪙</b> et <b>' + G.correct + '</b> bonnes réponses.<br>En attente des autres joueurs…<br>Le classement continue d’évoluer en direct! 👇</p></div>';
+}
+
+/* ================= Mode tour par tour ================= */
+function startTours(turnMs){
+  G.turnMs = turnMs || 20000;
+  questCardHTML().innerHTML = '<div class="wait-note"><div style="font-size:40px">🎬</div><h2>La partie commence!</h2><p>Chacun répond à tour de rôle devant tout le monde.<br>Le serveur mène le jeu…</p></div>';
+}
+function onTurn(m){
+  clearInterval(G.turnTick);
+  var card = questCardHTML();
+  G.myTurn = (m.player === G.name);
+  var msLeft = Math.max(0, m.deadline - Date.now());
+  var q = m.question;
+  var head = '<div class="turn-banner' + (G.myTurn ? ' mine' : '') + '">' +
+    (G.myTurn ? '🎯 À TOI DE JOUER, ' + esc(G.name).toUpperCase() + '!' : '👀 C’est le tour de <b>' + esc(m.player) + '</b>…') + '</div>' +
+    '<div class="quest-meta"><div><div class="quest-no">Tour ' + m.turn + ' / ' + m.total + ' · ' + esc(GAME_DATA.shiftName) + '</div>' +
+    (q.title ? '<h2>' + esc(q.title) + '</h2>' : '') + '</div></div>' +
+    '<div class="timerbar" id="turnBar"><i style="width:100%"></i></div>' +
+    '<div style="font:800 12px/1 \'Azeret Mono\',monospace;margin-bottom:8px">⏱ <span id="turnSecs">' + Math.ceil(msLeft / 1000) + '</span> s</div>';
+  var body = '';
+  if (q.speech) body += '<div class="speech">' + q.speech + '</div>';
+  if (q.source) body += '<div class="quiz-source">' + esc(q.source) + '</div>';
+  body += '<p class="prompt" style="font-weight:700;color:var(--ink)">' + esc(q.prompt) + '</p>';
+  body += '<div class="options' + (G.myTurn ? '' : ' spectate') + '" id="qOptions"></div>';
+  body += '<div class="result-strip" id="qResult"><b id="qResultT"></b><span id="qResultX"></span></div>';
+  card.innerHTML = head + body;
+  var box = $('qOptions');
+  shuffled(q.options.map(function(label, i){ return { label:label, i:i }; })).forEach(function(item){
+    var b = document.createElement('button');
+    b.className = 'choice'; b.textContent = item.label;
+    b.disabled = !G.myTurn;
+    if (G.myTurn) b.addEventListener('click', function(){
+      if (!G.myTurn) return;
+      G.myTurn = false;
+      box.querySelectorAll('button').forEach(function(x){ x.disabled = true; });
+      b.style.borderWidth = '4px';
+      send({ t:'answer', choice:item.i });
+    });
+    box.appendChild(b);
+  });
+  var total = G.turnMs;
+  G.turnTick = setInterval(function(){
+    var left = Math.max(0, m.deadline - Date.now());
+    var s = $('turnSecs'); if (s) s.textContent = Math.ceil(left / 1000);
+    var bar = $('turnBar'); if (bar) { bar.querySelector('i').style.width = (left / total * 100) + '%'; bar.classList.toggle('low', left < 5000); }
+    if (left <= 0) clearInterval(G.turnTick);
+  }, 250);
+  beep(G.myTurn ? 880 : 440, .1, 'triangle');
+}
+function onTurnResult(m){
+  clearInterval(G.turnTick);
+  G.myTurn = false;
+  renderLive(m.players, m.teams);
+  var r = $('qResult');
+  if (r) {
+    $('qResultT').textContent = (m.correct ? '✅ ' + m.player + ' : bonne réponse! +' + m.coins + ' 🪙' : '❌ ' + m.player + (m.timedOut ? ' : temps écoulé!' : ' : raté!'));
+    $('qResultX').textContent = m.text;
+    r.classList.add('show');
+    r.style.background = m.correct ? 'var(--mint)' : r.style.background;
+  }
+  beep(m.correct ? 740 : 150, .12, m.correct ? 'square' : 'sawtooth');
+}
+
+/* ================= Fin de partie ================= */
+function onOver(m){
+  clearInterval(G.turnTick); clearInterval(G.quizTimer);
+  G.phase = 'over'; G.started = false;
+  show('screen-final');
+  var players = m.players || [];
+  var isTeamGame = m.teamsEnabled && m.teams && m.teams.length;
+  // podium
+  var pod = $('podium'); pod.innerHTML = '';
+  var order = [1, 0, 2];
+  order.forEach(function(pi){
+    var p = players[pi];
+    var div = document.createElement('div');
+    div.className = 'pstep p' + (pi + 1);
+    div.innerHTML = '<div class="who">' + (p ? esc(p.name) : '—') + '</div>' +
+      '<div class="block">' + (pi === 0 ? '🏆' : pi + 1) + '</div>' +
+      '<div class="pts">' + (p ? p.coins + ' 🪙' : '') + '</div>';
+    pod.appendChild(div);
+  });
+  if (players[0] && players[0].name === G.name) confetti();
+  var winner = players[0];
+  $('finalTitle').textContent = winner ? ('🏆 ' + winner.name + ' remporte la manche!') : 'Partie terminée!';
+  // équipes
+  var tr = $('teamResults'); tr.innerHTML = '';
+  if (isTeamGame) {
+    var sorted = m.teams.slice().sort(function(a, b){ return b.score - a.score; });
+    sorted.forEach(function(t, i){
+      var row = document.createElement('div');
+      row.className = 'trow';
+      row.style.background = i === 0 ? 'var(--mint)' : 'var(--cabinet)';
+      row.innerHTML = '<span class="teamdot" style="background:' + esc(t.color) + '"></span>' +
+        '<span>' + (i === 0 ? '🏆 ' : '') + esc(t.emoji) + ' ' + esc(t.name) + ' <small>(' + t.count + ' joueurs)</small></span>' +
+        '<span style="margin-left:auto;font-family:\'Azeret Mono\',monospace">' + t.score + ' 🪙</span>';
+      tr.appendChild(row);
+    });
+  }
+  // classement complet
+  var fb = $('finalBoard'); fb.innerHTML = '';
+  players.forEach(function(p, i){
+    var li = document.createElement('li');
+    var tm = (G.teamsEnabled && p.team >= 0 && G.teams[p.team]) ? G.teams[p.team] : null;
+    li.innerHTML = '<span>' + medal(i) + '</span>' +
+      (tm ? '<span class="teamdot" style="background:' + esc(tm.color) + ';width:12px;height:12px;border-radius:50%;border:2px solid var(--line)"></span>' : '') +
+      '<span>' + esc(p.name) + ' <small style="color:var(--muted)">(' + p.correct + ' bonnes réponses)</small></span>' +
+      '<span class="pts">' + p.coins + ' 🪙</span>';
+    fb.appendChild(li);
+  });
+  $('btnToLobby').classList.toggle('hidden', !G.isHost);
+  beep(520, .12, 'square'); setTimeout(function(){ beep(660, .12, 'square'); }, 130); setTimeout(function(){ beep(880, .2, 'square'); }, 260);
+}
+function confetti(){
+  var c = $('confetti');
+  var colors = ['#d99b38', '#62a35e', '#9e4637', '#e6e5c8'];
+  for (var i = 0; i < 60; i++) {
+    var x = document.createElement('i');
+    x.style.left = (Math.random() * 100) + '%';
+    x.style.background = colors[i % colors.length];
+    x.style.setProperty('--drift', ((Math.random() - .5) * 160) + 'px');
+    x.style.animationDelay = (Math.random() * .6) + 's';
+    c.appendChild(x);
+  }
+  setTimeout(function(){ c.innerHTML = ''; }, 2600);
+}
+
+/* ================= Câblage de l'accueil ================= */
+function myPseudo(){
+  var v = $('pseudo').value.trim().slice(0, 16);
+  if (!v) { toast('Choisis un pseudo d’abord!'); $('pseudo').focus(); return null; }
+  return v;
+}
+function pickMode(which){
+  G.mode = which;
+  $('modeSimu').classList.toggle('selected', which === 'simu');
+  $('modeTours').classList.toggle('selected', which === 'tours');
+}
+function pickTeams(on){
+  G.teamsEnabled = on;
+  $('teamsOn').classList.toggle('selected', on);
+  $('teamsOff').classList.toggle('selected', !on);
+}
+function initHome(){
+  try { var saved = localStorage.getItem('bq-pseudo'); if (saved) $('pseudo').value = saved; } catch(e){}
+  $('btnShowCreate').addEventListener('click', function(){
+    $('createBox').classList.toggle('hidden'); $('joinBox').classList.add('hidden');
+  });
+  $('btnShowJoin').addEventListener('click', function(){
+    $('joinBox').classList.toggle('hidden'); $('createBox').classList.add('hidden');
+    setTimeout(function(){ $('roomCode').focus(); }, 60);
+  });
+  $('modeSimu').addEventListener('click', function(){ pickMode('simu'); });
+  $('modeTours').addEventListener('click', function(){ pickMode('tours'); });
+  $('teamsOn').addEventListener('click', function(){ pickTeams(true); });
+  $('teamsOff').addEventListener('click', function(){ pickTeams(false); });
+  $('btnCreate').addEventListener('click', function(){
+    var name = myPseudo(); if (!name) return;
+    G.name = name; G.started = false;
+    connect(function(){ send({ t:'create', name:name, mode:G.mode, teams:G.teamsEnabled, maxPlayers:parseInt($('maxPlayers').value, 10) }); });
+  });
+  var doJoin = function(){
+    var name = myPseudo(); if (!name) return;
+    var code = $('roomCode').value.trim().toUpperCase();
+    if (code.length !== 4) { toast('Le code fait 4 lettres!'); return; }
+    G.name = name; G.started = false;
+    connect(function(){ send({ t:'join', code:code, name:name }); });
+  };
+  $('btnJoin').addEventListener('click', doJoin);
+  $('roomCode').addEventListener('keydown', function(e){ if (e.key === 'Enter') doJoin(); });
+  $('btnCopyCode').addEventListener('click', function(){
+    var done = function(){ toast('Code copié! 📋'); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(G.code).then(done, done);
+    else done();
+  });
+  $('btnAddTeam').addEventListener('click', function(){
+    var v = $('newTeamName').value.trim();
+    if (!v) return;
+    send({ t:'add_team', name:v }); $('newTeamName').value = '';
+  });
+  $('btnShuffleTeams').addEventListener('click', function(){ send({ t:'shuffle_teams' }); });
+  $('btnStart').addEventListener('click', function(){ send({ t:'start' }); });
+  var leave = function(){ send({ t:'leave' }); G.code = null; G.started = false; setTimeout(function(){ location.reload(); }, 300); };
+  $('btnLeave').addEventListener('click', leave);
+  $('btnLeave2').addEventListener('click', leave);
+  $('btnApplaud').addEventListener('click', function(){ send({ t:'applaud' }); doApplaud(G.name); });
+  $('btnEndEarly').addEventListener('click', function(){ if (confirm('Terminer la manche maintenant?')) send({ t:'end' }); });
+  $('btnToLobby').addEventListener('click', function(){ send({ t:'to_lobby' }); });
+}
+
+initHome();
+setConn(false);
+})();
+</script>
+</body>
+</html>
