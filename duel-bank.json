@@ -1,0 +1,1202 @@
+[
+ {
+  "answer": 0,
+  "cat": "science",
+  "difficulty": 1,
+  "options": [
+   "5 à 10 minutes",
+   "2 heures",
+   "12 heures",
+   "Une semaine"
+  ],
+  "q": "En inhalant, après combien de temps ressent-on généralement les effets?"
+ },
+ {
+  "answer": 1,
+  "cat": "culture",
+  "difficulty": 1,
+  "options": [
+   "Thriller",
+   "Kaya",
+   "Nevermind",
+   "OK Computer"
+  ],
+  "q": "Bob Marley a célébré le cannabis dans l'album…?"
+ },
+ {
+  "answer": 2,
+  "cat": "histoire",
+  "difficulty": 1,
+  "options": [
+   "La Loi sur les aliments",
+   "La Loi sur le tabac",
+   "La Loi sur le cannabis (C-45)",
+   "Le Code criminel"
+  ],
+  "q": "Quelle loi fédérale a légalisé le cannabis au Canada en 2018?"
+ },
+ {
+  "answer": 3,
+  "cat": "pratique",
+  "difficulty": 1,
+  "options": [
+   "16 ans",
+   "18 ans",
+   "19 ans",
+   "21 ans"
+  ],
+  "q": "Quel est l'âge minimum pour acheter du cannabis au Québec?"
+ },
+ {
+  "answer": 1,
+  "cat": "science",
+  "difficulty": 1,
+  "options": [
+   "5 minutes",
+   "30 minutes à 2 heures",
+   "8 heures",
+   "24 heures"
+  ],
+  "q": "Un comestible met généralement combien de temps avant d'agir?"
+ },
+ {
+  "answer": 2,
+  "cat": "culture",
+  "difficulty": 1,
+  "options": [
+   "ABBA",
+   "Metallica",
+   "Cypress Hill",
+   "Coldplay"
+  ],
+  "q": "Quel groupe de hip-hop est indissociable de la culture cannabis?"
+ },
+ {
+  "answer": 3,
+  "cat": "histoire",
+  "difficulty": 1,
+  "options": [
+   "1er janvier 2000",
+   "25 décembre 2018",
+   "14 juillet 2019",
+   "17 octobre 2018"
+  ],
+  "q": "La Loi sur le cannabis est entrée en vigueur le…?"
+ },
+ {
+  "answer": 0,
+  "cat": "pratique",
+  "difficulty": 1,
+  "options": [
+   "30 g de cannabis séché (ou l'équivalent)",
+   "300 g",
+   "1 kg",
+   "Sans limite"
+  ],
+  "q": "Dans un lieu public au Québec, on peut posséder au maximum…?"
+ },
+ {
+  "answer": 2,
+  "cat": "science",
+  "difficulty": 1,
+  "options": [
+   "Il brûle plus fort",
+   "Il refroidit la fumée",
+   "Il chauffe sans combustion",
+   "Il ajoute du tabac"
+  ],
+  "q": "Que fait un vaporisateur, contrairement à un joint?"
+ },
+ {
+  "answer": 3,
+  "cat": "culture",
+  "difficulty": 1,
+  "options": [
+   "Des variétés",
+   "Des pipes",
+   "Des festivals",
+   "Les fringales"
+  ],
+  "q": "Les « munchies », ce sont…?"
+ },
+ {
+  "answer": 0,
+  "cat": "histoire",
+  "difficulty": 1,
+  "options": [
+   "Juin 2018",
+   "Juin 2008",
+   "Juin 1998",
+   "Juin 2023"
+  ],
+  "q": "La Loi encadrant le cannabis du Québec a été adoptée en…?"
+ },
+ {
+  "answer": 1,
+  "cat": "pratique",
+  "difficulty": 1,
+  "options": [
+   "N'importe quel dépanneur",
+   "La SQDC, seul détaillant autorisé",
+   "Les pharmacies",
+   "Les bars"
+  ],
+  "q": "Au Québec, qui peut vendre légalement du cannabis?"
+ },
+ {
+  "answer": 3,
+  "cat": "science",
+  "difficulty": 1,
+  "options": [
+   "Une variété",
+   "Un engrais",
+   "Une moisissure",
+   "Des trichomes détachés, riches en cannabinoïdes"
+  ],
+  "q": "Le kief, c'est…?"
+ },
+ {
+  "answer": 0,
+  "cat": "culture",
+  "difficulty": 1,
+  "options": [
+   "Du cannabis roulé dans une feuille de tabac",
+   "Un thé",
+   "Un vaporisateur",
+   "Un biscuit"
+  ],
+  "q": "Un « blunt », c'est…?"
+ },
+ {
+  "answer": 1,
+  "cat": "histoire",
+  "difficulty": 1,
+  "options": [
+   "1999",
+   "2024",
+   "2030",
+   "1985"
+  ],
+  "q": "L'Allemagne a légalisé le cannabis récréatif en…?"
+ },
+ {
+  "answer": 2,
+  "cat": "pratique",
+  "difficulty": 2,
+  "options": [
+   "30 g",
+   "75 g",
+   "150 g, peu importe le nombre de résidents",
+   "500 g"
+  ],
+  "q": "À domicile au Québec, la limite de possession est de…?"
+ },
+ {
+  "answer": 0,
+  "cat": "science",
+  "difficulty": 2,
+  "options": [
+   "6 à 8 heures ou plus",
+   "15 minutes",
+   "30 minutes",
+   "2 jours complets"
+  ],
+  "q": "Les effets d'un comestible peuvent durer…?"
+ },
+ {
+  "answer": 1,
+  "cat": "culture",
+  "difficulty": 2,
+  "options": [
+   "Leurs documentaires animaliers",
+   "Leurs comédies sur le cannabis, comme « Up in Smoke »",
+   "Leurs chansons country",
+   "Leurs jeux vidéo"
+  ],
+  "q": "Cheech & Chong sont célèbres pour…?"
+ },
+ {
+  "answer": 2,
+  "cat": "histoire",
+  "difficulty": 2,
+  "options": [
+   "La prohibition totale",
+   "La peine de mort",
+   "La décriminalisation du cannabis",
+   "L'interdiction de l'alcool"
+  ],
+  "q": "La Commission Le Dain, créée en 1969, a recommandé…?"
+ },
+ {
+  "answer": 3,
+  "cat": "pratique",
+  "difficulty": 2,
+  "options": [
+   "Permis jusqu'à 10 plants",
+   "Encouragé",
+   "Toléré",
+   "Interdit"
+  ],
+  "q": "Cultiver du cannabis à domicile au Québec, c'est…?"
+ },
+ {
+  "answer": 1,
+  "cat": "science",
+  "difficulty": 2,
+  "options": [
+   "Colore le sang",
+   "Se stocke dans les tissus adipeux",
+   "Durcit les os",
+   "S'évapore lentement"
+  ],
+  "q": "Le THC reste détectable longtemps parce qu'il…?"
+ },
+ {
+  "answer": 2,
+  "cat": "culture",
+  "difficulty": 2,
+  "options": [
+   "La conquête spatiale",
+   "Des ados fêtards des années 1970",
+   "Les pirates",
+   "La bourse"
+  ],
+  "q": "« Dazed and Confused » (1993) est un film culte sur…?"
+ },
+ {
+  "answer": 3,
+  "cat": "histoire",
+  "difficulty": 2,
+  "options": [
+   "1990",
+   "2005",
+   "2010",
+   "2020"
+  ],
+  "q": "Au Québec, l'âge légal du cannabis est passé de 18 à 21 ans en…?"
+ },
+ {
+  "answer": 0,
+  "cat": "pratique",
+  "difficulty": 2,
+  "options": [
+   "Interdit",
+   "Permis partout",
+   "Permis après 22 h",
+   "Réservé aux touristes"
+  ],
+  "q": "Fumer ou vapoter du cannabis dans un lieu public au Québec, c'est…?"
+ },
+ {
+  "answer": 2,
+  "cat": "science",
+  "difficulty": 2,
+  "options": [
+   "Une allergie",
+   "Une intolérance alimentaire",
+   "Le besoin d'augmenter la dose pour le même effet",
+   "Un effet du CBD"
+  ],
+  "q": "La tolérance au cannabis, c'est…?"
+ },
+ {
+  "answer": 3,
+  "cat": "culture",
+  "difficulty": 2,
+  "options": [
+   "Un ananas géant",
+   "Une croisière",
+   "Un concours de surf",
+   "Une variété de cannabis au cœur d'une comédie d'action"
+  ],
+  "q": "« Pineapple Express » (2008) met en scène…?"
+ },
+ {
+  "answer": 0,
+  "cat": "histoire",
+  "difficulty": 2,
+  "options": [
+   "Confirmé que le Québec peut interdire la culture à domicile",
+   "Légalisé la culture partout",
+   "Aboli la SQDC",
+   "Interdit le CBD"
+  ],
+  "q": "Dans l'affaire Murray-Hall c. Québec (2023), la Cour suprême a…?"
+ },
+ {
+  "answer": 1,
+  "cat": "pratique",
+  "difficulty": 2,
+  "options": [
+   "De prendre le plus fort",
+   "2,5 mg de THC ou moins pour commencer",
+   "D'en manger trois à la fois",
+   "De jeûner avant"
+  ],
+  "q": "Un client débute avec les comestibles : on lui suggère…?"
+ },
+ {
+  "answer": 3,
+  "cat": "science",
+  "difficulty": 2,
+  "options": [
+   "Devenir expert",
+   "Cultiver en serre",
+   "Acheter en gros",
+   "Avoir trop dosé : malaise passager"
+  ],
+  "q": "« Greening out », ça veut dire…?"
+ },
+ {
+  "answer": 0,
+  "cat": "culture",
+  "difficulty": 2,
+  "options": [
+   "L'effet « cloué au divan »",
+   "Un cadenas",
+   "Une technique de roulage",
+   "Un type de serrure"
+  ],
+  "q": "Le « couch-lock », c'est…?"
+ },
+ {
+  "answer": 1,
+  "cat": "histoire",
+  "difficulty": 2,
+  "options": [
+   "1975",
+   "2022",
+   "1990",
+   "2035"
+  ],
+  "q": "La Thaïlande a dépénalisé le cannabis en…?"
+ },
+ {
+  "answer": 2,
+  "cat": "pratique",
+  "difficulty": 2,
+  "options": [
+   "5 minutes",
+   "30 minutes",
+   "Au moins 2 heures",
+   "Une semaine"
+  ],
+  "q": "Après avoir mangé un comestible, on conseille d'attendre avant de reprendre…?"
+ },
+ {
+  "answer": 0,
+  "cat": "science",
+  "difficulty": 2,
+  "options": [
+   "Atténuer certains effets du THC",
+   "Rendre le THC plus fort à coup sûr",
+   "Être détecté comme de l'alcool",
+   "Ne servir qu'en cuisine"
+  ],
+  "q": "Le CBD peut…?"
+ },
+ {
+  "answer": 1,
+  "cat": "culture",
+  "difficulty": 2,
+  "options": [
+   "Un bonbon",
+   "La sécheresse de la bouche",
+   "Un filtre",
+   "Une variété"
+  ],
+  "q": "La « bouche de coton », c'est…?"
+ },
+ {
+  "answer": 2,
+  "cat": "histoire",
+  "difficulty": 2,
+  "options": [
+   "La Russie",
+   "La Chine",
+   "Le Mexique",
+   "L'Arabie saoudite"
+  ],
+  "q": "En 2021, la Cour suprême de quel pays a ouvert la voie à la légalisation?"
+ },
+ {
+  "answer": 3,
+  "cat": "pratique",
+  "difficulty": 2,
+  "options": [
+   "Foncer tête baissée",
+   "Copier ses amis",
+   "Choisir le plus fort",
+   "Commencer bas, aller lentement"
+  ],
+  "q": "La règle d'or pour un nouveau consommateur, c'est…?"
+ },
+ {
+  "answer": 1,
+  "cat": "science",
+  "difficulty": 2,
+  "options": [
+   "Interdit",
+   "Équilibré",
+   "Réservé aux experts",
+   "Sans aucun effet"
+  ],
+  "q": "Un produit au ratio THC:CBD de 1:1 est…?"
+ },
+ {
+  "answer": 2,
+  "cat": "culture",
+  "difficulty": 2,
+  "options": [
+   "Cuisiner",
+   "Boxer",
+   "Consommer dans un petit espace clos et enfumé",
+   "Jardiner"
+  ],
+  "q": "Faire du « hotboxing », c'est…?"
+ },
+ {
+  "answer": 3,
+  "cat": "histoire",
+  "difficulty": 2,
+  "options": [
+   "1960",
+   "1980",
+   "2000",
+   "2018"
+  ],
+  "q": "L'Afrique du Sud a permis l'usage privé du cannabis en…?"
+ },
+ {
+  "answer": 0,
+  "cat": "pratique",
+  "difficulty": 2,
+  "options": [
+   "Un produit à dominance CBD",
+   "Le plus fort en THC",
+   "Un concentré",
+   "Un produit inconnu"
+  ],
+  "q": "Un client veut rester fonctionnel en journée : on l'oriente vers…?"
+ },
+ {
+  "answer": 2,
+  "cat": "science",
+  "difficulty": 2,
+  "options": [
+   "20 °C",
+   "60 °C",
+   "110 à 120 °C",
+   "300 °C"
+  ],
+  "q": "La décarboxylation se fait généralement autour de…?"
+ },
+ {
+  "answer": 3,
+  "cat": "culture",
+  "difficulty": 2,
+  "options": [
+   "Une marque de thé",
+   "Un biscuit",
+   "Une danse",
+   "Une pause pour faire redescendre sa tolérance"
+  ],
+  "q": "Un « t-break », c'est…?"
+ },
+ {
+  "answer": 0,
+  "cat": "histoire",
+  "difficulty": 2,
+  "options": [
+   "2021",
+   "1981",
+   "1951",
+   "2031"
+  ],
+  "q": "Le Maroc a légalisé le cannabis médical en…?"
+ },
+ {
+  "answer": 1,
+  "cat": "pratique",
+  "difficulty": 2,
+  "options": [
+   "Sur le comptoir",
+   "Verrouillé, hors de portée des enfants et des animaux",
+   "Dans la voiture",
+   "Au congélateur ouvert"
+  ],
+  "q": "À la maison, le cannabis doit être rangé…?"
+ },
+ {
+  "answer": 3,
+  "cat": "science",
+  "difficulty": 2,
+  "options": [
+   "Par distillation chimique",
+   "Par fermentation",
+   "Par congélation",
+   "Par chaleur et pression, sans solvant"
+  ],
+  "q": "Le rosin est un concentré obtenu…?"
+ },
+ {
+  "answer": 0,
+  "cat": "culture",
+  "difficulty": 2,
+  "options": [
+   "Effriter les fleurs avant de rouler",
+   "Moudre du café",
+   "Couper les ongles",
+   "Affûter un couteau"
+  ],
+  "q": "Un grinder (moulin) sert à…?"
+ },
+ {
+  "answer": 1,
+  "cat": "histoire",
+  "difficulty": 2,
+  "options": [
+   "Le premier pays à interdire le chanvre",
+   "Le premier pays arabe à légaliser le cannabis médical",
+   "Le plus gros producteur de café",
+   "Membre de l'OTAN"
+  ],
+  "q": "En 2020, le Liban est devenu…?"
+ },
+ {
+  "answer": 2,
+  "cat": "pratique",
+  "difficulty": 2,
+  "options": [
+   "Le soleil direct",
+   "Un sac ouvert",
+   "Un endroit frais, sombre, dans un contenant hermétique",
+   "Le micro-ondes"
+  ],
+  "q": "Pour bien conserver ses fleurs, on recommande…?"
+ },
+ {
+  "answer": 0,
+  "cat": "science",
+  "difficulty": 2,
+  "options": [
+   "Fleurs fraîches congelées",
+   "Fleurs séchées d'un an",
+   "Graines",
+   "Tiges"
+  ],
+  "q": "Le « live resin » est fabriqué à partir de…?"
+ },
+ {
+  "answer": 1,
+  "cat": "culture",
+  "difficulty": 2,
+  "options": [
+   "Un volcan italien",
+   "Un vaporisateur de table réputé",
+   "Une variété",
+   "Un festival"
+  ],
+  "q": "Le Volcano est…?"
+ },
+ {
+  "answer": 2,
+  "cat": "histoire",
+  "difficulty": 2,
+  "options": [
+   "Interdit le reggae",
+   "Fermé ses frontières",
+   "Dépénalisé la possession de petites quantités",
+   "Banni la musique"
+  ],
+  "q": "En 2015, la Jamaïque a…?"
+ },
+ {
+  "answer": 3,
+  "cat": "pratique",
+  "difficulty": 2,
+  "options": [
+   "Offrir un café",
+   "Demander l'autographe",
+   "Raconter sa vie",
+   "Vérifier une pièce d'identité (21 ans et plus)"
+  ],
+  "q": "Avant chaque vente, le conseiller doit…?"
+ },
+ {
+  "answer": 1,
+  "cat": "science",
+  "difficulty": 2,
+  "options": [
+   "2 secondes",
+   "15 à 45 minutes",
+   "6 heures",
+   "2 jours"
+  ],
+  "q": "Une huile sublinguale agit généralement en…?"
+ },
+ {
+  "answer": 2,
+  "cat": "culture",
+  "difficulty": 2,
+  "options": [
+   "Un sifflet",
+   "Un couteau",
+   "Un joint mélangé avec du tabac",
+   "Un chapeau"
+  ],
+  "q": "Un « spliff », c'est…?"
+ },
+ {
+  "answer": 3,
+  "cat": "histoire",
+  "difficulty": 2,
+  "options": [
+   "La France",
+   "L'Allemagne",
+   "L'Espagne",
+   "Malte"
+  ],
+  "q": "Quel pays est devenu en 2021 le premier de l'UE à légaliser le cannabis?"
+ },
+ {
+  "answer": 0,
+  "cat": "pratique",
+  "difficulty": 3,
+  "options": [
+   "250 $ à 750 $ (doublée en cas de récidive)",
+   "10 $",
+   "10 000 $",
+   "Aucune amende"
+  ],
+  "q": "Cultiver à domicile au Québec expose à une amende de…?"
+ },
+ {
+  "answer": 2,
+  "cat": "science",
+  "difficulty": 3,
+  "options": [
+   "Le cannabinoïde du sommeil",
+   "Le faux THC",
+   "Le cannabinoïde « coupe-faim »",
+   "La mère des cannabinoïdes"
+  ],
+  "q": "Le THCV est surnommé…?"
+ },
+ {
+  "answer": 3,
+  "cat": "culture",
+  "difficulty": 3,
+  "options": [
+   "Un journal financier",
+   "Un magazine de cuisine",
+   "Un catalogue de meubles",
+   "La référence de la contre-culture cannabique"
+  ],
+  "q": "Le magazine « High Times », fondé en 1974, est…?"
+ },
+ {
+  "answer": 0,
+  "cat": "histoire",
+  "difficulty": 3,
+  "options": [
+   "Du cannabis vieux de 2 700 ans",
+   "Des téléphones",
+   "Des voitures",
+   "Des ordinateurs"
+  ],
+  "q": "En 2008, des archéologues ont trouvé dans des tombes du Xinjiang…?"
+ },
+ {
+  "answer": 1,
+  "cat": "pratique",
+  "difficulty": 3,
+  "options": [
+   "100 plants",
+   "Jusqu'à 4 plants par résidence",
+   "Un champ entier",
+   "Aucun plant"
+  ],
+  "q": "Ailleurs au Canada (hors Québec), la loi fédérale permet…?"
+ },
+ {
+  "answer": 3,
+  "cat": "science",
+  "difficulty": 3,
+  "options": [
+   "Un terpène",
+   "Un pesticide",
+   "Un engrais",
+   "Un cannabinoïde non intoxicant"
+  ],
+  "q": "Le CBC (cannabichromène) est…?"
+ },
+ {
+  "answer": 0,
+  "cat": "culture",
+  "difficulty": 3,
+  "options": [
+   "Les meilleures variétés de cannabis",
+   "Les meilleurs fromages",
+   "Les plus beaux jardins",
+   "Les cafés"
+  ],
+  "q": "La Cannabis Cup d'Amsterdam, créée en 1988, récompense…?"
+ },
+ {
+  "answer": 1,
+  "cat": "histoire",
+  "difficulty": 3,
+  "options": [
+   "Carburant",
+   "Encens rituel",
+   "Engrais",
+   "Monnaie"
+  ],
+  "q": "Les Assyriens brûlaient le « qunubu » comme…?"
+ },
+ {
+  "answer": 2,
+  "cat": "pratique",
+  "difficulty": 3,
+  "options": [
+   "C'est le moins cher",
+   "C'est le plus fort",
+   "C'est le seul à dominance d'ocimène",
+   "Il est gratuit"
+  ],
+  "q": "Le Bubba Kush est unique à la SQDC parce que…?"
+ },
+ {
+  "answer": 0,
+  "cat": "science",
+  "difficulty": 3,
+  "options": [
+   "Des notes boisées et terreuses",
+   "La lavande",
+   "Les agrumes",
+   "La rose"
+  ],
+  "q": "L'humulène, aussi présent dans le houblon, évoque…?"
+ },
+ {
+  "answer": 1,
+  "cat": "culture",
+  "difficulty": 3,
+  "options": [
+   "Des cailloux lunaires",
+   "Des fleurs enrobées d'huile puis roulées dans du kief",
+   "Des météorites",
+   "Des bonbons"
+  ],
+  "q": "Les « moonrocks » sont…?"
+ },
+ {
+  "answer": 2,
+  "cat": "histoire",
+  "difficulty": 3,
+  "options": [
+   "La finance",
+   "La contre-culture hippie et le cannabis",
+   "L'industrie lourde",
+   "La guerre froide"
+  ],
+  "q": "Woodstock (1969) est resté associé à…?"
+ },
+ {
+  "answer": 3,
+  "cat": "pratique",
+  "difficulty": 3,
+  "options": [
+   "Lui donner de l'alcool",
+   "Lui crier dessus",
+   "Appeler la police",
+   "Le rassurer, l'hydrater et attendre que ça passe"
+  ],
+  "q": "Un client a trop dosé : le bon réflexe, c'est de…?"
+ },
+ {
+  "answer": 1,
+  "cat": "science",
+  "difficulty": 3,
+  "options": [
+   "Le poivre",
+   "Le floral doux",
+   "L'essence",
+   "Le vinaigre"
+  ],
+  "q": "Le bisabolol, aussi présent dans la camomille, sent…?"
+ },
+ {
+  "answer": 2,
+  "cat": "culture",
+  "difficulty": 3,
+  "options": [
+   "Un verre brisé",
+   "Un éclat de voix",
+   "Un concentré translucide et cassant comme du verre",
+   "Une danse"
+  ],
+  "q": "Le « shatter » est…?"
+ },
+ {
+  "answer": 3,
+  "cat": "histoire",
+  "difficulty": 3,
+  "options": [
+   "Sur du papyrus",
+   "Sur de la soie",
+   "Sur du parchemin de cuir",
+   "Sur du papier de chanvre"
+  ],
+  "q": "Les brouillons de la Déclaration d'indépendance américaine auraient été rédigés…?"
+ },
+ {
+  "answer": 0,
+  "cat": "pratique",
+  "difficulty": 3,
+  "options": [
+   "Ne pose pas de diagnostic et parle des profils de produits",
+   "Prescrit un traitement",
+   "Promet la guérison",
+   "Refuse de répondre"
+  ],
+  "q": "Un client demande un produit « pour dormir » : le conseiller…?"
+ },
+ {
+  "answer": 2,
+  "cat": "science",
+  "difficulty": 3,
+  "options": [
+   "Avec du butane",
+   "Avec de l'alcool",
+   "Avec de l'eau glacée et des sacs filtrants",
+   "Avec du tabac"
+  ],
+  "q": "Le « bubble hash » est fabriqué…?"
+ },
+ {
+  "answer": 3,
+  "cat": "culture",
+  "difficulty": 3,
+  "options": [
+   "D'une marque de bière",
+   "D'un jeu vidéo",
+   "D'une série télé",
+   "Des dispensaires américains (le « barman » du cannabis)"
+  ],
+  "q": "Le mot « budtender » vient…?"
+ },
+ {
+  "answer": 0,
+  "cat": "histoire",
+  "difficulty": 3,
+  "options": [
+   "Des associations privées tolérées",
+   "Des bars à cocktails",
+   "Des équipes sportives",
+   "Des cinémas"
+  ],
+  "q": "À Barcelone, les « clubs sociaux de cannabis » sont…?"
+ },
+ {
+  "answer": 1,
+  "cat": "pratique",
+  "difficulty": 3,
+  "options": [
+   "100 % de THC",
+   "Elle contient l'ensemble des composés de la plante",
+   "Elle est transparente",
+   "Elle ne contient rien"
+  ],
+  "q": "Que signifie « spectre complet » sur une huile?"
+ },
+ {
+  "answer": 3,
+  "cat": "science",
+  "difficulty": 3,
+  "options": [
+   "D'ajouter de l'alcool",
+   "De colorer le liquide",
+   "De mousser",
+   "De rendre le THC soluble dans l'eau pour un effet plus rapide"
+  ],
+  "q": "La nanoémulsion, utilisée dans les boissons, permet…?"
+ },
+ {
+  "answer": 0,
+  "cat": "culture",
+  "difficulty": 3,
+  "options": [
+   "Un sommelier du cannabis certifié",
+   "Un jardinier",
+   "Un policier",
+   "Un musicien"
+  ],
+  "q": "Un « ganjier » est…?"
+ },
+ {
+  "answer": 1,
+  "cat": "histoire",
+  "difficulty": 3,
+  "options": [
+   "Une interdiction totale",
+   "Des essais pilotes de vente encadrée",
+   "Une guerre commerciale",
+   "Un recensement"
+  ],
+  "q": "Depuis 2023, la Suisse mène…?"
+ },
+ {
+  "answer": 2,
+  "cat": "pratique",
+  "difficulty": 3,
+  "options": [
+   "Le concentré le plus fort",
+   "Trois produits à la fois",
+   "Un produit à faible teneur en THC ou équilibré",
+   "Le moins cher sans réfléchir"
+  ],
+  "q": "Pour un premier achat, on recommande souvent…?"
+ },
+ {
+  "answer": 0,
+  "cat": "science",
+  "difficulty": 3,
+  "options": [
+   "L'effet dépend surtout du profil chimique de la variété",
+   "Elle est trop précise",
+   "Les noms ont changé",
+   "Elle date de 2024"
+  ],
+  "q": "Pourquoi la distinction indica/sativa est-elle remise en question?"
+ },
+ {
+  "answer": 1,
+  "cat": "culture",
+  "difficulty": 3,
+  "options": [
+   "Peser ses fleurs",
+   "Prendre de très petites doses pour rester fonctionnel",
+   "Cultiver en miniature",
+   "Fumer très vite"
+  ],
+  "q": "Le microdosage consiste à…?"
+ },
+ {
+  "answer": 2,
+  "cat": "histoire",
+  "difficulty": 3,
+  "options": [
+   "Un plat",
+   "Une danse",
+   "Un mélange de cannabis et de tabac",
+   "Un instrument"
+  ],
+  "q": "Le « kif » du Rif marocain est traditionnellement…?"
+ },
+ {
+  "answer": 3,
+  "cat": "pratique",
+  "difficulty": 3,
+  "options": [
+   "1 mg de THC",
+   "5 mg de THC",
+   "100 mg de THC",
+   "10 mg de THC"
+  ],
+  "q": "Un emballage de comestible vendu au Canada contient au maximum…?"
+ },
+ {
+  "answer": 1,
+  "cat": "science",
+  "difficulty": 4,
+  "options": [
+   "Ignore le THCA",
+   "Inclut le THCA converti en THC",
+   "Est toujours de 0 %",
+   "Mesure les terpènes"
+  ],
+  "q": "Le « THC total » indiqué sur l'étiquette…?"
+ },
+ {
+  "answer": 2,
+  "cat": "culture",
+  "difficulty": 4,
+  "options": [
+   "Des baguettes",
+   "Des bâtons d'encens",
+   "Des fleurs thaïlandaises attachées sur des tiges de bambou",
+   "Des cure-dents"
+  ],
+  "q": "Les « Thai sticks » des années 1970 étaient…?"
+ },
+ {
+  "answer": 3,
+  "cat": "histoire",
+  "difficulty": 3,
+  "options": [
+   "Des Jeux olympiques",
+   "Une coupe du monde",
+   "Un festival géant",
+   "Un référendum sur la légalisation, rejeté de justesse"
+  ],
+  "q": "En 2020, la Nouvelle-Zélande a tenu…?"
+ },
+ {
+  "answer": 0,
+  "cat": "pratique",
+  "difficulty": 4,
+  "options": [
+   "Le Québec peut interdire la culture à domicile",
+   "Tout le monde peut cultiver",
+   "La SQDC est illégale",
+   "Le cannabis est interdit partout"
+  ],
+  "q": "En 2023, la Cour suprême a tranché que…?"
+ },
+ {
+  "answer": 2,
+  "cat": "science",
+  "difficulty": 4,
+  "options": [
+   "50 °C",
+   "100 °C",
+   "160 à 180 °C",
+   "400 °C"
+  ],
+  "q": "Le point d'ébullition du CBD se situe autour de…?"
+ },
+ {
+  "answer": 3,
+  "cat": "culture",
+  "difficulty": 4,
+  "options": [
+   "Une chanson",
+   "Une bière",
+   "Un parfum",
+   "L'une des premières variétés modernes stabilisées"
+  ],
+  "q": "« Skunk #1 », créée dans les années 1970, est…?"
+ },
+ {
+  "answer": 0,
+  "cat": "histoire",
+  "difficulty": 4,
+  "options": [
+   "2014",
+   "1994",
+   "1974",
+   "2034"
+  ],
+  "q": "L'Oregon a légalisé le cannabis récréatif en…?"
+ },
+ {
+  "answer": 1,
+  "cat": "pratique",
+  "difficulty": 4,
+  "options": [
+   "Le même qu'en Ontario",
+   "Le plus élevé au Canada, plus élevé que celui de l'alcool (18 ans)",
+   "Le plus bas au Canada",
+   "Non réglementé"
+  ],
+  "q": "L'âge légal du cannabis au Québec est…?"
+ },
+ {
+  "answer": 3,
+  "cat": "science",
+  "difficulty": 4,
+  "options": [
+   "Leur odeur",
+   "Leur taille",
+   "Leurs graines",
+   "Leurs teintes violettes"
+  ],
+  "q": "Les anthocyanes donnent à certaines fleurs…?"
+ },
+ {
+  "answer": 0,
+  "cat": "culture",
+  "difficulty": 4,
+  "options": [
+   "Un gâteau au cannabis popularisé à Amsterdam",
+   "Un gâteau d'anniversaire",
+   "Un dessert spatial",
+   "Une marque de farine"
+  ],
+  "q": "Le « space cake » est…?"
+ },
+ {
+  "answer": 1,
+  "cat": "histoire",
+  "difficulty": 4,
+  "options": [
+   "1983",
+   "2023",
+   "2003",
+   "2043"
+  ],
+  "q": "Le Luxembourg a légalisé l'usage personnel et la culture en…?"
+ },
+ {
+  "answer": 2,
+  "cat": "pratique",
+  "difficulty": 4,
+  "options": [
+   "Seulement des fleurs",
+   "Seulement des bonbons",
+   "Fleurs, préroulés, huiles, comestibles, boissons, concentrés, topiques, accessoires",
+   "Des vêtements"
+  ],
+  "q": "Dans les sections du magasin, on trouve…?"
+ },
+ {
+  "answer": 0,
+  "cat": "science",
+  "difficulty": 4,
+  "options": [
+   "Détecter moisissures, pesticides et contaminants",
+   "Mesurer la popularité",
+   "Vérifier l'emballage cadeau",
+   "Compter les graines"
+  ],
+  "q": "Les produits de la SQDC sont analysés pour…?"
+ },
+ {
+  "answer": 1,
+  "cat": "culture",
+  "difficulty": 4,
+  "options": [
+   "Un plat",
+   "Un filtre artisanal pour masquer l'odeur",
+   "Un oiseau",
+   "Un sortilège"
+  ],
+  "q": "Un « sploof », c'est…?"
+ },
+ {
+  "answer": 2,
+  "cat": "histoire",
+  "difficulty": 4,
+  "options": [
+   "1971",
+   "1991",
+   "2001",
+   "2021"
+  ],
+  "q": "Le Portugal a dépénalisé la possession de toutes les drogues en…?"
+ },
+ {
+  "answer": 3,
+  "cat": "pratique",
+  "difficulty": 4,
+  "options": [
+   "Accepte avec un sourire",
+   "Ferme les yeux",
+   "Demande un pourboire",
+   "Refuse la vente"
+  ],
+  "q": "Un client veut acheter pour son ami de 19 ans : le conseiller…?"
+ }
+]
