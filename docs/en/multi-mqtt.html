@@ -1566,6 +1566,7 @@ function pushScore(finished){
 }
 function deckItem(i){ return G.deck[i]; }
 function itemData(it){
+  if (it.kind === 'bank') return { kind:'quiz', source:it.cat, prompt:it.q, options:it.options, answer:it.answer, reward:GAME_DATA.quizReward, fact:it.cat };
   if (it.kind === 'quiz') { var z = GAME_DATA.quiz[it.id]; return { kind:'quiz', source:z.source, prompt:z.q, options:z.a, answer:z.ok, reward:GAME_DATA.quizReward, fact:z.fact }; }
   var q = GAME_DATA.quests[it.id];
   return { kind:'quest', title:q.title, speech:q.speech, prompt:q.prompt, options:q.options, answer:q.answer, reward:q.reward, success:q.success, fail:q.fail, consultation:q.consultation || null };
