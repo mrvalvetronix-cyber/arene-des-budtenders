@@ -57,6 +57,12 @@ function authRate(cid) {
   let a = authAttempts.get(cid);
   if (!a || now > a.reset) { a = { n: 0, reset: now + 60000 }; authAttempts.set(cid, a); }
   a.n++;
+  /* Purge opportuniste : les entrées expirées ne servent plus (une fenêtre
+     dépassée est réinitialisée à la prochaine tentative de toute façon) —
+     évite que la Map ne croisse indéfiniment avec les cid éphémères. */
+  if (authAttempts.size > 1000) {
+    for (const [k, v] of authAttempts) if (now > v.reset) authAttempts.delete(k);
+  }
   return a.n <= 10;
 }
 function handleAuth(cid, m) {
