@@ -264,9 +264,9 @@
     deckOrder: DECK_ORDER,
     duelQuestions: DUEL_QUESTIONS,
     duelCount: 20,
-    duelMs: 15000,
+    duelMs: 20000,
     quizReward: 15,
-    turnMs: 20000,
+    turnMs: 25000,
     teamPresets: [
       { name: 'Indica', color: '#7b5fc9', emoji: '🛋️' },
       { name: 'Sativa', color: '#e8a13c', emoji: '⚡' },
