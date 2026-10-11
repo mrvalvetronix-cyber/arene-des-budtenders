@@ -18,12 +18,17 @@ const MIME = {
   '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon'
 };
 const server = http.createServer((req, res) => {
-  let urlPath = decodeURIComponent(req.url.split('?')[0]);
+  let urlPath;
+  try { urlPath = decodeURIComponent(req.url.split('?')[0]); }
+  catch (e) { res.writeHead(400); res.end(); return; } // URI malformée → 400, pas un crash
   if (urlPath === '/') urlPath = '/multi.html';
   let file;
   if (urlPath === '/game-data.js') file = path.join(__dirname, 'game-data.js');
   else file = path.normalize(path.join(PUBLIC, urlPath));
-  if (!file.startsWith(__dirname)) { res.writeHead(403); res.end(); return; }
+  /* Ne servir QUE le dossier public (+ game-data.js, ci-dessus) : le garde-fou
+     précédent (startsWith(__dirname)) laissait passer /../accounts.json,
+     /../mqtt-bridge.js, etc. */
+  if (urlPath !== '/game-data.js' && !file.startsWith(PUBLIC + path.sep)) { res.writeHead(403); res.end(); return; }
   fs.readFile(file, (err, data) => {
     if (err) { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); res.end('Introuvable'); return; }
     res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-cache' });
