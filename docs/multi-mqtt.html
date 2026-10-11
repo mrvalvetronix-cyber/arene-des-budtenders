@@ -5,8 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="color-scheme" content="dark" />
 <link rel="icon" href="data:," />
-<script src="https://accounts.google.com/gsi/client" async defer></script>
-<title>L’arène des budtender · Multijoueur</title>
+<title>L’arène des budtenders · Multijoueur</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Azeret+Mono:wght@600;700;800&family=Bricolage+Grotesque:opsz,wght@12..96,500;600;700;800&display=swap');
 :root{
@@ -285,9 +284,22 @@ select,input[type=text]{font:inherit}
 .account-btns{display:flex;gap:8px}
 .account-btns .secondary{flex:1;margin:0}
 .account-err{color:var(--red);font-weight:700;font-size:13px;margin:8px 0 0}
-.google-wrap{margin-top:12px;display:flex;flex-direction:column;align-items:center}
-.google-sep{display:flex;align-items:center;gap:8px;width:100%;margin:2px 0 10px;color:var(--muted);font:700 11px/1 "Azeret Mono",monospace;text-transform:uppercase;letter-spacing:.1em}
-.google-sep::before,.google-sep::after{content:"";flex:1;height:2px;background:var(--line);opacity:.35}
+/* ---------- Selfies / avatars ---------- */
+.avatar{width:30px;height:30px;border-radius:50%;object-fit:cover;border:2px solid var(--amber);flex:0 0 auto;background:var(--surface)}
+.avatar.avatar-fb{display:inline-grid;place-items:center;font-size:16px}
+.avatar.pod-av{width:38px;height:38px;margin:0 auto 3px;display:block}
+.selfie-row{display:flex;align-items:center;gap:12px;margin:8px 0 12px}
+.selfie-ring{width:54px;height:54px;border-radius:50%;overflow:hidden;border:2px solid var(--amber);display:grid;place-items:center;font-size:28px;background:var(--surface);flex:0 0 auto}
+.selfie-ring img{width:100%;height:100%;object-fit:cover}
+/* ---------- Tutoriel de première partie (coach marks) ---------- */
+.tut-overlay{position:fixed;inset:0;z-index:3000;background:rgba(4,10,7,.66)}
+.tut-hl{position:fixed;z-index:3001;display:none;border:3px solid var(--amber);border-radius:14px;box-shadow:0 0 26px rgba(255,127,65,.65);pointer-events:none;transition:all .25s ease}
+.tut-card{position:fixed;z-index:3002;width:min(330px,calc(100vw - 24px));background:var(--paper);border:2px solid var(--amber);border-radius:16px;padding:14px 16px;box-shadow:0 20px 55px rgba(0,0,0,.65)}
+.tut-card h4{margin:0 0 6px;font-size:1.02rem;color:var(--amber)}
+.tut-card p{margin:0 0 12px;font-size:.92rem;line-height:1.45;color:var(--text)}
+.tut-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.tut-dots{font-size:.75rem;color:var(--muted)}
+.tut-btns{display:flex;gap:8px}
 .account-stats{font-size:14px;margin:0 0 10px}
 .account-box .fine{font-size:11px;color:var(--muted);margin:8px 0 0}
 /* ---------- Arène « Avoir la flamme » — fond dynamique ---------- */
@@ -518,7 +530,7 @@ body{background:
 <div class="arena-vignette" aria-hidden="true"></div>
 <main class="app" id="app">
   <header class="hud">
-    <div class="brand"><span class="flame-brand"><span class="flame">🔥</span>L’arène des budtender</span><small>· multijoueur ·</small></div>
+    <div class="brand"><span class="flame-brand"><span class="flame">🔥</span>L’arène des budtenders</span><small>· multijoueur ·</small></div>
     <div class="hud-actions">
       <span class="bank-chip" id="bankChip" title="Tes cocottes"><span id="bankIco"></span><span id="bankAmt">0</span></span>
       <button class="voice-btn" id="btnVoice" type="button" aria-label="Activer ou couper la narration" title="Narration des questions">🗣️</button>
@@ -552,15 +564,19 @@ body{background:
             <button class="secondary" id="btnLogin" type="button">Se connecter</button>
             <button class="secondary" id="btnRegister" type="button">Créer un compte</button>
           </div>
-          <div class="google-wrap">
-            <div class="google-sep"><span>ou</span></div>
-            <div id="gBtnFR"></div>
-          </div>
           <p class="account-err hidden" id="accountErr"></p>
           <p class="fine">Ton compte est lié à ton pseudo ci-dessus — tes stats (parties, victoires, séries) sont conservées. Utilise un mot de passe unique à ce jeu.</p>
         </div>
         <div id="accountIn" class="hidden">
           <h3>👤 <span id="accountName"></span></h3>
+          <div class="selfie-row">
+            <span class="selfie-ring" id="selfieRing">👤</span>
+            <div>
+              <button class="secondary mini-btn" id="btnSelfie" type="button">📸 Changer mon selfie</button>
+              <input type="file" id="selfieFile" accept="image/*" class="hidden" />
+              <p class="fine" style="margin:6px 0 0">Ton avatar apparaît dans les salons et sur les podiums.</p>
+            </div>
+          </div>
           <p class="account-stats" id="accountStats"></p>
           <div class="transfer-box">
             <h4>🎁 Envoyer des cocottes</h4>
@@ -783,7 +799,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
 <script>
 /* game-data.js inliné */
 /* Données partagées entre le serveur (Node) et le client (navigateur).
-   Extraites de « L’arène des budtender » — quart d'initiation. */
+   Extraites de « L’arène des budtenders » — quart d'initiation. */
 (function (root) {
   'use strict';
 
@@ -1125,7 +1141,8 @@ var INCOMING_TYPES = {
   error:1, hello:1, state:1, start:1, leaderboard:1, turn:1, turn_result:1,
   duel_q:1, duel_result:1, duel_answered:1, rematch_offer:1,
   rematch_declined:1, rematch_expired:1, applaud:1, over:1, board:1,
-  auth_ok:1, auth_error:1, transfer_result:1, joker_result:1
+  auth_ok:1, auth_error:1, transfer_result:1, joker_result:1,
+  selfie:1, selfie_ok:1
 };
 function sanitizeIncoming(raw){
   if (!raw || Object.prototype.toString.call(raw) !== '[object Object]') return null;
@@ -1133,6 +1150,7 @@ function sanitizeIncoming(raw){
     if (depth > 6) return null;
     if (typeof v === 'string') {
       var longField = /^(prompt|speech|text|msg|fact|success|fail|source|title)$/.test(key);
+      if (key === 'selfie') return cleanText(v, 70000); // data URL (~10-20 Ko)
       return cleanText(v, longField ? 1200 : 128);
     }
     if (typeof v === 'number') return isFinite(v) ? v : 0;
@@ -1234,6 +1252,7 @@ function renderAccount(){
     if ($('pseudo')) { $('pseudo').value = G.account.gamertag; $('pseudo').disabled = true; }
     var s = G.account.stats || {};
     $('accountStats').textContent = (s.games||0) + ' parties · ' + (s.wins||0) + ' victoires · meilleure série x' + (s.bestStreak||0) + ' · ' + num(s.coins||0) + ' 🪙';
+    renderSelfie();
   } else if ($('pseudo')) { $('pseudo').disabled = false; }
 }
 function doAuth(kind){
@@ -1241,13 +1260,21 @@ function doAuth(kind){
   $('accountErr').classList.add('hidden');
   if (tag.length < 3) { $('accountErr').textContent = 'Pseudo : 3 lettres minimum.'; $('accountErr').classList.remove('hidden'); return; }
   if (pw.length < 4) { $('accountErr').textContent = 'Mot de passe : 4 caractères minimum.'; $('accountErr').classList.remove('hidden'); return; }
+  if (kind === 'register') G.pendingRegister = true;
   connect(function(){ send({ t: kind, gamertag: tag, password: pw }); });
 }
 function onAuthOk(m){
-  G.account = { gamertag: m.gamertag, stats: m.stats || {}, token: m.token };
-  try { localStorage.setItem('arena_token', m.token); localStorage.setItem('arena_tag', m.gamertag); } catch(e){}
+  G.account = { gamertag: m.gamertag, stats: m.stats || {}, token: m.token, selfie: m.selfie || null };
+  try {
+    localStorage.setItem('arena_token', m.token); localStorage.setItem('arena_tag', m.gamertag);
+    if (m.selfie) localStorage.setItem('arena_selfie', m.selfie);
+  } catch(e){}
+  var wasRegister = !!G.pendingRegister;
+  G.pendingRegister = false;
+  if (wasRegister) { try { sessionStorage.setItem('arena_first_time', '1'); } catch(e2){} }
   renderAccount();
   toast('Connecté : ' + m.gamertag + ' 👤');
+  if (wasRegister && !G.tutShown) { G.tutShown = true; startTutorial(); }
 }
 function onAuthError(m){
   var e = $('accountErr'); e.textContent = m.msg || 'Erreur de connexion.'; e.classList.remove('hidden');
@@ -1256,34 +1283,156 @@ function onAuthError(m){
 }
 function doLogout(){
   G.account = null;
-  try { localStorage.removeItem('arena_token'); localStorage.removeItem('arena_tag'); } catch(e){}
+  G.pendingSelfie = null;
+  try { localStorage.removeItem('arena_token'); localStorage.removeItem('arena_tag'); localStorage.removeItem('arena_selfie'); } catch(e){}
   renderAccount();
 }
-/* ---------- Connexion Google (Google Identity Services) ---------- */
-var GOOGLE_CLIENT_ID = '90665097871-pk0t2vshc5c22h6e86l9he2nvv0unltb.apps.googleusercontent.com';
-function onGoogleCredential(resp){
-  var cred = resp && resp.credential;
-  if (!cred) {
-    var e = $('accountErr'); e.textContent = 'Connexion Google annulée.'; e.classList.remove('hidden'); return;
+/* ---------- Selfies / avatars (chargement paresseux, jamais dans les broadcasts) ---------- */
+var SELFIE_CACHE = new Map(); // pseudo -> data URL | null (null = demandé, sans selfie)
+/* N’accepte que les data URL d’images bitmap : le pont répond sur un relais public,
+   une « selfie » forgée (ex. data:image/svg+xml avec ") ne doit jamais atteindre innerHTML. */
+function okSelfie(u){ return typeof u === 'string' && /^data:image\/(jpeg|png|gif|webp);base64,[A-Za-z0-9+/=]+$/.test(u); }
+function requestSelfie(name){
+  if (!name || SELFIE_CACHE.has(name)) return;
+  SELFIE_CACHE.set(name, null);
+  // NOTE : pas de connect() ici — il couperait la connexion MQTT en cours.
+  if (G.mqtt && G.mqtt.connected) send({ t:'get_selfie', gamertag: name });
+  else SELFIE_CACHE.delete(name); // hors ligne : réessaiera au prochain rendu
+}
+function avatarImg(name, cls){
+  var s = null;
+  if (name) { if (!SELFIE_CACHE.has(name)) requestSelfie(name); s = SELFIE_CACHE.get(name); if (!okSelfie(s)) s = null; }
+  var c = 'avatar' + (cls ? ' ' + cls : '');
+  if (s) return '<img class="' + c + '" data-av="' + esc(name) + '" src="' + s + '" alt="" />';
+  return '<span class="' + c + ' avatar-fb" data-av="' + esc(name) + '">👤</span>';
+}
+function renderSelfie(){
+  var ring = $('selfieRing'); if (!ring) return;
+  var du = (G.account && G.account.selfie) || null;
+  if (!du) { try { du = localStorage.getItem('arena_selfie'); } catch(e){} }
+  if (okSelfie(du)) ring.innerHTML = '<img src="' + du + '" alt="Ton avatar" />';
+  else ring.textContent = '👤';
+}
+function handleSelfieFile(file){
+  if (!file || !/^image\//.test(file.type || '')) return;
+  if (!(G.account && G.account.token)) { toast('Crée un compte pour changer ton selfie.'); return; }
+  var url = URL.createObjectURL(file);
+  var img = new Image();
+  var badImg = function(){ try { URL.revokeObjectURL(url); } catch(e){} toast('Image illisible — essaie une autre photo.'); };
+  img.onload = function(){
+    try {
+      var c = document.createElement('canvas'); c.width = c.height = 160;
+      var ctx = c.getContext('2d');
+      var s = Math.max(160 / img.width, 160 / img.height);
+      var w = img.width * s, h = img.height * s;
+      ctx.drawImage(img, (160 - w) / 2, (160 - h) / 2, w, h);
+      if (!(G.mqtt && G.mqtt.connected)) { toast('Hors ligne — reconnecte-toi pour changer ton selfie.'); return; }
+      G.pendingSelfie = c.toDataURL('image/jpeg', 0.7);
+      send({ t:'set_selfie', token: G.account.token, selfie: G.pendingSelfie });
+      clearTimeout(G.selfieAckT); // le pont peut ne jamais confirmer : pas d’attente infinie
+      G.selfieAckT = setTimeout(function(){
+        if (G.pendingSelfie) { G.pendingSelfie = null; toast('Selfie non confirmée par l’arène — réessaie.'); }
+      }, 15000);
+    } catch(e){ badImg(); return; }
+    try { URL.revokeObjectURL(url); } catch(e2){}
+  };
+  img.onerror = badImg;
+  img.src = url;
+}
+function onSelfieOk(m){
+  clearTimeout(G.selfieAckT);
+  var du = G.pendingSelfie || m.selfie || null;
+  G.pendingSelfie = null;
+  if (du) {
+    if (G.account) G.account.selfie = du;
+    try { localStorage.setItem('arena_selfie', du); } catch(e){}
   }
-  $('accountErr').classList.add('hidden');
-  connect(function(){ send({ t: 'google-login', idToken: cred }); });
+  renderSelfie();
+  toast('Selfie mise à jour ✅');
 }
-function initGoogle(){
-  if (!window.google || !google.accounts || !google.accounts.id) return;
-  try {
-    google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: onGoogleCredential, ux_mode: 'popup' });
-    google.accounts.id.renderButton($('gBtnFR'),
-      { type: 'standard', size: 'large', theme: 'outline', text: 'signin_with', shape: 'pill', width: 260 });
-  } catch(e){}
+function onSelfieMsg(m){
+  if (!m.gamertag) return;
+  var su = okSelfie(m.selfie) ? m.selfie : null;
+  SELFIE_CACHE.set(m.gamertag, su);
+  if (!su) return;
+  // Remplace les 👤 en place par l’image reçue (aucun re-rendu complet).
+  var els = document.querySelectorAll('[data-av]');
+  for (var i = 0; i < els.length; i++) {
+    var el = els[i];
+    if (el.getAttribute('data-av') === m.gamertag && el.tagName !== 'IMG') {
+      var im = document.createElement('img');
+      im.className = el.className.replace('avatar-fb', '').replace(/\s+/g, ' ').trim();
+      im.setAttribute('data-av', m.gamertag);
+      im.alt = '';
+      im.src = su;
+      el.parentNode.replaceChild(im, el);
+    }
+  }
 }
-(function waitGsi(frTries){
-  if (window.google && google.accounts && google.accounts.id) { initGoogle(); return; }
-  if (frTries < 40) setTimeout(function(){ waitGsi(frTries + 1); }, 250);
-})(0);
+
+/* ---------- Tutoriel de première partie (coach marks) ---------- */
+var TUT_STEPS = [
+  { sel:'#accountBox', openCreate:false, title:'Bienvenue dans l’arène ! 🔥', text:'Choisis ton pseudo ci-dessus, puis crée un compte : tes stats et ton avatar seront conservés.' },
+  { sel:'#btnShowCreate', openCreate:false, title:'Crée une partie', text:'Un seul clic suffit : tu ouvres un salon et tes amis peuvent te rejoindre.' },
+  { sel:'#modeDuel', openCreate:true, title:'Choisis ton mode', text:'Le duel enflammé est notre mode vedette : 1 contre 1, 20 questions.' },
+  { sel:'#btnCreate', openCreate:true, title:'Ton code de partie', text:'En créant la salle, tu reçois un code de 4 lettres — partage-le à tes amis pour qu’ils te rejoignent.' },
+  { sel:'#btnShowJoin', openCreate:false, title:'Rejoins un ami', text:'Ton ami a déjà un code ? Entre-le ici… et que la flamme soit avec toi !' }
+];
+function startTutorial(){
+  try { sessionStorage.removeItem('arena_first_time'); } catch(e){} // consommé dès l’affichage, même si « Passer »
+  var i = 0;
+  var ov = document.createElement('div');
+  ov.className = 'tut-overlay';
+  ov.innerHTML = '<div class="tut-hl" id="tutHl"></div><div class="tut-card" id="tutCard" role="dialog" aria-live="polite"></div>';
+  document.body.appendChild(ov);
+  var hl = ov.querySelector('#tutHl'), card = ov.querySelector('#tutCard');
+  function closeTut(){ if (ov.parentNode) ov.parentNode.removeChild(ov); }
+  function centerCard(){
+    hl.style.display = 'none';
+    card.style.transform = 'translate(-50%,-50%)';
+    card.style.left = '50%'; card.style.top = '50%';
+  }
+  function placeCard(el){
+    var r = el.getBoundingClientRect();
+    if (!(r.width > 0 && r.height > 0)) { centerCard(); return; }
+    hl.style.display = 'block';
+    hl.style.left = (r.left - 8) + 'px'; hl.style.top = (r.top - 8) + 'px';
+    hl.style.width = (r.width + 16) + 'px'; hl.style.height = (r.height + 16) + 'px';
+    card.style.transform = 'none';
+    card.style.left = Math.max(12, Math.min(window.innerWidth - 350, r.left)) + 'px';
+    var below = r.bottom + 18;
+    card.style.top = ((below + 240 < window.innerHeight) ? below : Math.max(12, r.top - 250)) + 'px';
+  }
+  function showStep(){
+    var st = TUT_STEPS[i];
+    var last = (i === TUT_STEPS.length - 1);
+    if (st.openCreate) { var cb = $('createBox'); if (cb) cb.classList.remove('hidden'); }
+    card.innerHTML =
+      '<h4>' + esc(st.title) + '</h4>' +
+      '<p>' + esc(st.text) + '</p>' +
+      '<div class="tut-row"><span class="tut-dots">Étape ' + (i + 1) + ' / ' + TUT_STEPS.length + '</span>' +
+      '<span class="tut-btns"><button class="secondary mini-btn" id="tutSkip" type="button">Passer</button>' +
+      '<button class="primary mini-btn" id="tutNext" type="button">' + (last ? 'C’est parti !' : 'Suivant') + '</button></span></div>';
+    $('tutSkip').addEventListener('click', closeTut);
+    $('tutNext').addEventListener('click', function(){ i++; if (i >= TUT_STEPS.length) closeTut(); else showStep(); });
+    var el = st.sel ? document.querySelector(st.sel) : null;
+    if (el && el.getBoundingClientRect) {
+      try { el.scrollIntoView({ block:'center', behavior:'smooth' }); } catch(e2){}
+      setTimeout(function(){ placeCard(el); }, 380);
+    } else centerCard();
+  }
+  showStep();
+}
+function maybeStartTutorial(){
+  var flag = null;
+  try { flag = sessionStorage.getItem('arena_first_time'); } catch(e){}
+  if (flag === '1' && !G.tutShown) { G.tutShown = true; startTutorial(); }
+}
 function onMessage(m){
   if (m.t === 'auth_ok') { onAuthOk(m); return; }
   if (m.t === 'auth_error') { onAuthError(m); return; }
+  if (m.t === 'selfie_ok') { onSelfieOk(m); return; }
+  if (m.t === 'selfie') { onSelfieMsg(m); return; }
   if (m.t === 'error') { toast(m.msg); beep(150,.15,'sawtooth'); return; }
   if (G.presenter) { onPresenterMessage(m); return; }
   if (m.t === 'hello') { G.name = m.you; return; }
@@ -1383,7 +1532,7 @@ function renderLobby(){
     var dot = '';
     var tm = teamOf(p);
     if (tm) dot = '<span class="teamdot" style="background:' + safeColor(tm.color) + '" title="' + esc(tm.name) + '"></span>';
-    li.innerHTML = dot + esc(p.name) +
+    li.innerHTML = dot + avatarImg(p.name) + esc(p.name) +
       (p.isHost ? '<span class="host">hôte</span>' : '') +
       (!p.connected ? '<span class="disc">déconnecté</span>' : '');
     ul.appendChild(li);
@@ -1791,7 +1940,7 @@ function onDuelOver(m){
     var p = players[pi];
     var div = document.createElement('div');
     div.className = 'pstep p' + (pi + 1);
-    div.innerHTML = '<div class="who">' + (p ? esc(p.name) : '—') + '</div>' +
+    div.innerHTML = '<div class="who">' + (p ? avatarImg(p.name, 'pod-av') + esc(p.name) : '—') + '</div>' +
       '<div class="block">' + (pi === 0 ? '🔥' : '🥈') + '</div>' +
       '<div class="pts">' + (p ? num(p.coins) + ' 🪙' : '') + '</div>';
     pod.appendChild(div);
@@ -1863,7 +2012,7 @@ function onOver(m){
     var p = players[pi];
     var div = document.createElement('div');
     div.className = 'pstep p' + (pi + 1);
-    div.innerHTML = '<div class="who">' + (p ? esc(p.name) : '—') + '</div>' +
+    div.innerHTML = '<div class="who">' + (p ? avatarImg(p.name, 'pod-av') + esc(p.name) : '—') + '</div>' +
       '<div class="block">' + (pi === 0 ? '🏆' : pi + 1) + '</div>' +
       '<div class="pts">' + (p ? num(p.coins) + ' 🪙' : '') + '</div>';
     pod.appendChild(div);
@@ -2242,9 +2391,12 @@ function initHome(){
 }
 
 initHome();
+maybeStartTutorial(); // tutoriel de première partie si le flag est posé
   $('btnLogin').addEventListener('click', function(){ doAuth('login'); });
   $('btnRegister').addEventListener('click', function(){ doAuth('register'); });
   $('btnLogout').addEventListener('click', doLogout);
+  $('btnSelfie').addEventListener('click', function(){ var f = $('selfieFile'); if (f) f.click(); });
+  $('selfieFile').addEventListener('change', function(){ if (this.files && this.files[0]) handleSelfieFile(this.files[0]); this.value = ''; });
   renderAccount();
   connect(function(){
     askBoard();
