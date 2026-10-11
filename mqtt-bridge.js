@@ -23,6 +23,155 @@ function logCrash(kind, err) {
 process.on('uncaughtException', (e) => { logCrash('uncaughtException', e); process.exit(1); });
 process.on('unhandledRejection', (e) => { logCrash('unhandledRejection', e); process.exit(1); });
 
+
+/* ---------- Comptes (gamertag + mot de passe) ---------- */
+const crypto = require('crypto');
+const ACCOUNTS_FILE = path.join(__dirname, 'accounts.json');
+let accounts = {};
+try { accounts = JSON.parse(fs.readFileSync(ACCOUNTS_FILE, 'utf8')) || {}; }
+catch (e) { accounts = {}; }
+let accountsDirty = false;
+setInterval(() => {
+  if (!accountsDirty) return;
+  accountsDirty = false;
+  try { fs.writeFileSync(ACCOUNTS_FILE, JSON.stringify(accounts)); }
+  catch (e) { console.error('accounts save:', e.message); }
+}, 5000);
+const sessions = new Map(); // token -> gamertag
+const authAttempts = new Map(); // cid -> { n, reset }
+
+function cleanTag(t) {
+  return String(t || '').trim().replace(/\s+/g, ' ').slice(0, 16);
+}
+function hashPw(pw, salt) {
+  return crypto.scryptSync(String(pw), salt, 32).toString('hex');
+}
+function authOk(cid, tag) {
+  const token = crypto.randomBytes(24).toString('hex');
+  sessions.set(token, tag);
+  if (sessions.size > 5000) { const k = sessions.keys().next().value; sessions.delete(k); }
+  sendTo(cid, { t: 'auth_ok', gamertag: tag, stats: accounts[tag].stats, token });
+}
+function authRate(cid) {
+  const now = Date.now();
+  let a = authAttempts.get(cid);
+  if (!a || now > a.reset) { a = { n: 0, reset: now + 60000 }; authAttempts.set(cid, a); }
+  a.n++;
+  return a.n <= 10;
+}
+function handleAuth(cid, m) {
+  if (!authRate(cid)) { sendTo(cid, { t: 'auth_error', msg: 'Trop de tentatives, réessaie dans une minute.' }); return; }
+  if (m.t === 'me') {
+    const tag = sessions.get(String(m.token || ''));
+    if (tag && accounts[tag]) { sendTo(cid, { t: 'auth_ok', gamertag: tag, stats: accounts[tag].stats, token: m.token }); }
+    else sendTo(cid, { t: 'auth_error', msg: 'Session expirée.' });
+    return;
+  }
+  const tag = cleanTag(m.gamertag);
+  const pw = String(m.password || '');
+  if (tag.length < 3) { sendTo(cid, { t: 'auth_error', msg: 'Gamertag : 3 lettres minimum.' }); return; }
+  if (pw.length < 4) { sendTo(cid, { t: 'auth_error', msg: 'Mot de passe : 4 caractères minimum.' }); return; }
+  if (pw.length > 72) { sendTo(cid, { t: 'auth_error', msg: 'Mot de passe trop long.' }); return; }
+  if (m.t === 'register') {
+    if (accounts[tag]) { sendTo(cid, { t: 'auth_error', msg: 'Ce gamertag est déjà pris.' }); return; }
+    const salt = crypto.randomBytes(16).toString('hex');
+    accounts[tag] = { salt, hash: hashPw(pw, salt), created: Date.now(),
+      stats: { games: 0, wins: 0, bestStreak: 0, coins: 0 } };
+    accountsDirty = true;
+    authOk(cid, tag);
+    return;
+  }
+  if (m.t === 'login') {
+    const acc = accounts[tag];
+    const ok = acc && crypto.timingSafeEqual(Buffer.from(acc.hash, 'hex'), Buffer.from(hashPw(pw, acc.salt), 'hex'));
+    if (!ok) { sendTo(cid, { t: 'auth_error', msg: 'Gamertag ou mot de passe incorrect.' }); return; }
+    authOk(cid, tag);
+    return;
+  }
+}
+/* Lie le token de session au joueur (create/join) */
+function linkToken(player, m) {
+  const tag = sessions.get(String(m.token || ''));
+  if (tag && accounts[tag]) player.gamertag = tag;
+}
+/* Stats persistantes en fin de partie */
+function recordAccountStats(players, winnerName) {
+  let changed = false;
+  for (const p of players) {
+    if (!p.gamertag || !accounts[p.gamertag]) continue;
+    const st = accounts[p.gamertag].stats;
+    st.games++;
+    st.coins += (p.coins || 0);
+    if ((p.bestStreak || 0) > (st.bestStreak || 0)) st.bestStreak = p.bestStreak;
+    if (winnerName && p.name === winnerName) st.wins++;
+    changed = true;
+  }
+  if (changed) accountsDirty = true;
+}
+
+/* ---------- Connexion Google (Google Identity Services) ----------
+   Le client envoie le jeton ID (credential GIS) via MQTT ; on le vérifie
+   auprès de Google avant de retrouver/créer le compte lié. */
+const GOOGLE_CLIENT_ID = '90665097871-pk0t2vshc5c22h6e86l9he2nvv0unltb.apps.googleusercontent.com';
+const GOOGLE_ISSUERS = new Set(['accounts.google.com', 'https://accounts.google.com']);
+
+/* Vérifie un jeton ID Google via le point tokeninfo. Ne lève jamais :
+   renvoie { ok:true, sub, email, name } ou { ok:false, msg }. */
+async function verifyGoogleToken(idToken) {
+  const tok = String(idToken || '').slice(0, 4096);
+  if (!/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(tok))
+    return { ok: false, msg: 'Jeton Google invalide.' };
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 8000);
+  try {
+    const res = await fetch('https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(tok),
+      { signal: ctrl.signal });
+    if (!res.ok) return { ok: false, msg: 'Jeton Google refusé.' };
+    const info = await res.json();
+    if (!info || typeof info !== 'object') return { ok: false, msg: 'Réponse Google invalide.' };
+    if (info.aud !== GOOGLE_CLIENT_ID) return { ok: false, msg: 'Jeton émis pour une autre application.' };
+    if (!GOOGLE_ISSUERS.has(String(info.iss))) return { ok: false, msg: 'Émetteur du jeton inconnu.' };
+    const exp = Number(info.exp);
+    if (!Number.isFinite(exp) || exp * 1000 <= Date.now()) return { ok: false, msg: 'Jeton Google expiré.' };
+    const sub = String(info.sub || '');
+    if (!sub) return { ok: false, msg: 'Jeton Google incomplet.' };
+    return { ok: true, sub, email: String(info.email || ''), name: String(info.name || '') };
+  } catch (e) {
+    const aborted = e && (e.name === 'AbortError' || e.name === 'TimeoutError');
+    return { ok: false, msg: aborted ? 'Google ne répond pas, réessaie.' : 'Vérification Google impossible.' };
+  } finally { clearTimeout(timer); }
+}
+/* Gamertag à partir du nom Google, suffixé en cas de collision. */
+function tagForGoogle(name) {
+  const base = cleanTag(name) || 'Gladiateur';
+  if (!accounts[base]) return base;
+  for (let i = 2; i < 1000; i++) {
+    const t = (base + ' ' + i).slice(0, 16);
+    if (!accounts[t]) return t;
+  }
+  return (base + ' ' + Date.now().toString(36)).slice(0, 16);
+}
+function handleGoogleLogin(cid, m) {
+  if (!authRate(cid)) { sendTo(cid, { t: 'auth_error', msg: 'Trop de tentatives, réessaie dans une minute.' }); return; }
+  verifyGoogleToken(m.idToken).then((v) => {
+    if (!v.ok) { sendTo(cid, { t: 'auth_error', msg: v.msg }); return; }
+    let tag = null;
+    for (const t of Object.keys(accounts)) {
+      if (accounts[t] && accounts[t].googleSub === v.sub) { tag = t; break; }
+    }
+    if (!tag) {
+      tag = tagForGoogle(v.name);
+      accounts[tag] = { googleSub: v.sub, email: v.email, created: Date.now(),
+        stats: { games: 0, wins: 0, bestStreak: 0, coins: 0 } };
+      accountsDirty = true;
+    }
+    authOk(cid, tag);
+  }).catch((e) => {
+    console.error('google-login:', e && e.message);
+    sendTo(cid, { t: 'auth_error', msg: 'Vérification Google impossible.' });
+  });
+}
+
 /* ---------- Banque de questions du duel (renouvelée chaque dimanche) ---------- */
 const DUEL_BANK_FILE = path.join(__dirname, 'duel-bank.json');
 function validDuelQ(q) {
@@ -86,6 +235,18 @@ function bankFor(room) {
 }
 
 const NS = 'budtender/v1';
+
+/* Libellé de saison du tableau hebdo : « Semaine du 11 octobre 2026 » à
+   partir du weekId (date du dimanche d'ouverture, AAAA-MM-JJ). */
+const MOIS_FR = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet',
+  'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+function seasonLabel(weekId) {
+  const p = String(weekId || '').split('-');
+  if (p.length !== 3) return 'Semaine en cours';
+  const m = MOIS_FR[parseInt(p[1], 10) - 1];
+  if (!m) return 'Semaine en cours';
+  return 'Semaine du ' + parseInt(p[2], 10) + ' ' + m + ' ' + p[0];
+}
 const LOBBY = NS + '/lobby';
 const STATUS_WILD = NS + '/c/+/status';
 const UP_WILD = NS + '/r/+/up';
@@ -254,21 +415,22 @@ function dealTurn(room) {
   broadcast(room, payload);
   clearTimeout(room.turnTimer);
   room.turnTimer = setTimeout(() => resolveTurn(room, null, true), DATA.turnMs + 500);
+  maybeBotTurn(room);
 }
-function resolveTurn(room, choice, timedOut) {
+function resolveTurn(room, choice, timedOut, skipped) {
   if (room.phase !== 'play' || room.turnLock) return;
   room.turnLock = true;
   clearTimeout(room.turnTimer);
   const item = room.deck[room.turnIdx];
   const q = turnQuestion(item);
   const player = activePlayer(room);
-  const correct = !timedOut && choice === q.answer;
+  const correct = !timedOut && !skipped && choice === q.answer;
   const coins = correct ? q.reward : 0;
   if (player) { player.coins += coins; if (correct) player.correct++; player.progress = room.turnIdx + 1; }
   const snap = snapshot(room);
   broadcast(room, {
-    t: 'turn_result', player: player ? player.name : '?', correct, coins, timedOut: !!timedOut,
-    text: timedOut ? 'Temps écoulé!' : (correct ? q.success : q.fail),
+    t: 'turn_result', player: player ? player.name : '?', correct, coins, timedOut: !!timedOut, skipped: !!skipped,
+    text: skipped ? 'Question passée ⏭' : (timedOut ? 'Temps écoulé!' : (correct ? q.success : q.fail)),
     players: snap.players, teams: snap.teams
   });
   room.turnIdx++;
@@ -283,7 +445,8 @@ function endGame(room) {
   clearTimeout(room.turnTimer);
   const snap = snapshot(room);
   BOARD.recordScores(snap.players, snap.players.length ? snap.players[0].name : null); // tableau hebdo
-  broadcast(room, { t: 'over', players: snap.players, teams: snap.teams, mode: room.settings.mode, teamsEnabled: room.settings.teams });
+  recordAccountStats([...room.players.values()], snap.players.length ? snap.players[0].name : null);
+    broadcast(room, { t: 'over', players: snap.players, teams: snap.teams, mode: room.settings.mode, teamsEnabled: room.settings.teams });
 }
 
 /* ---------- Le duel enflammé (1v1) ---------- */
@@ -302,7 +465,7 @@ function beginRematch(room) {
   room.duel = {
     qi: 0,
     questions: shuffled(pool.slice()).slice(0, DATA.duelCount || 20),
-    answers: {}, timer: null, wrongs: {}
+    answers: {}, timer: null, wrongs: {}, streaks: {}
   };
   room.rematch = true;
   broadcast(room, { t: 'start', mode: 'duel', shiftName: DATA.shiftName, duelMs: DATA.duelMs, total: room.duel.questions.length, rematch: true });
@@ -325,6 +488,7 @@ function dealDuel(room) {
   broadcast(room, payload);
   clearTimeout(d.timer);
   d.timer = setTimeout(() => resolveDuel(room), DATA.duelMs + 500);
+  scheduleDuelBots(room);
 }
 function resolveDuel(room) {
   const d = room.duel;
@@ -337,21 +501,35 @@ function resolveDuel(room) {
   for (const p of room.players.values()) {
     if (!p.connected) continue;
     const a = d.answers[p.name];
+    if (a && a.skipped) {
+      // Joker « Passer » : ni bonne réponse, ni faute, série préservée.
+      results.push({ name: p.name, choice: -1, correct: false, pts: 0,
+        streak: d.streaks[p.name] || 0, onFire: false, skipped: true });
+      continue;
+    }
     const correct = !!(a && a.choice === q.answer);
-    let pts = 0;
+    let pts = 0, onFire = false;
     if (correct) {
       const remain = Math.max(0, (d.payload.deadline - (a ? a.at : d.payload.deadline)));
       pts = (base + Math.round(base * 0.5 * (remain / DATA.duelMs))) * (room.rematch ? 2 : 1);
+      const streak = (d.streaks[p.name] || 0) + 1;
+      d.streaks[p.name] = streak;
+      onFire = streak >= 3;
+      if (onFire) pts = Math.round(pts * 1.5); // EN FEU : x1.5
       p.coins += pts; p.correct++;
+      if (streak > (p.bestStreak || 0)) p.bestStreak = streak;
     } else {
+      d.streaks[p.name] = 0;
       d.wrongs[p.name] = (d.wrongs[p.name] || 0) + 1;
       if (d.wrongs[p.name] >= 3 && !eliminated) eliminated = p;
     }
-    results.push({ name: p.name, choice: a ? a.choice : -1, correct, pts });
+    results.push({ name: p.name, choice: a ? a.choice : -1, correct, pts,
+      streak: d.streaks[p.name] || 0, onFire });
   }
   broadcast(room, {
     t: 'duel_result', qi: d.qi + 1, total: d.questions.length, answer: q.answer,
     results, scores: duelScores(room), wrongs: Object.assign({}, d.wrongs),
+    streaks: Object.assign({}, d.streaks),
     eliminated: eliminated ? eliminated.name : null
   });
   d.qi++;
@@ -397,6 +575,7 @@ function endDuel(room, eliminated) {
       rematchCooldownUntil = rematchCooldowns.get(key) || 0;
     }
   }
+  recordAccountStats([...room.players.values()], winner ? winner.name : null);
   broadcast(room, {
     t: 'over', mode: 'duel', players, teams: [], teamsEnabled: false,
     winner: winner ? winner.name : null,
@@ -414,6 +593,96 @@ function resetForLobby(room) {
   if (room.duel) { clearTimeout(room.duel.timer); room.duel = null; }
   for (const p of room.players.values()) { p.coins = 0; p.correct = 0; p.progress = 0; p.finished = false; }
 }
+
+/* ---------- Bots d'arène 🤖 ---------- */
+/* Remplissent les places restantes au démarrage et jouent comme des humains. */
+const BOT_NAMES = ['Spartacus 🤖', 'Maximus 🤖', 'Xena 🤖', 'Leonidas 🤖', 'Achille 🤖',
+  'Hector 🤖', 'Boudicca 🤖', 'César 🤖', 'Athéna 🤖', 'Arès 🤖', 'Némésis 🤖',
+  'Titan 🤖', 'Persée 🤖', 'Thésée 🤖', 'Cléopâtre 🤖', 'Hannibal 🤖'];
+const BOT_ACCURACY = 0.72;
+const brnd = (a, b) => a + Math.random() * (b - a);
+const botChoice = (answer, nOptions) =>
+  Math.random() < BOT_ACCURACY ? answer : Math.floor(Math.random() * nOptions);
+
+function fillBots(room) {
+  const target = room.settings.mode === 'duel' ? 2 : room.settings.maxPlayers;
+  let i = 0, added = 0;
+  while (room.players.size < target && i < BOT_NAMES.length) {
+    const bot = { id: 'bot-' + room.code + '-' + i + '-' + Date.now().toString(36), name: null, isBot: true };
+    bot.name = uniqueName(room, BOT_NAMES[i]);
+    addPlayer(room, bot);
+    i++; added++;
+  }
+  if (added > 0) sendState(room);
+  return added;
+}
+
+/* Duel : chaque bot répond après un délai humain */
+function scheduleDuelBots(room) {
+  const d = room.duel;
+  if (!d) return;
+  const q = d.questions[d.qi];
+  if (!q) return;
+  for (const p of room.players.values()) {
+    if (!p.isBot || !p.connected) continue;
+    if ((d.wrongs[p.name] || 0) >= 3) continue;
+    const delay = brnd(2500, Math.max(3200, DATA.duelMs - 1500));
+    setTimeout(() => {
+      if (room.phase !== 'play' || room.duel !== d || d.answers[p.name]) return;
+      d.answers[p.name] = { choice: botChoice(q.answer, q.options.length), at: Date.now() };
+      broadcast(room, { t: 'duel_answered', qi: d.qi + 1, name: p.name });
+      const active = [...room.players.values()].filter(x => x.connected);
+      if (active.length && active.every(x => d.answers[x.name])) { clearTimeout(d.timer); resolveDuel(room); }
+    }, delay);
+  }
+}
+
+/* Tour par tour : le bot joue son tour automatiquement */
+function maybeBotTurn(room) {
+  const player = activePlayer(room);
+  if (!player || !player.isBot) return;
+  const turnIdx = room.turnIdx;
+  const item = room.deck[turnIdx];
+  if (!item) return;
+  const q = turnQuestion(item);
+  const nOptions = q.options.length;
+  const delay = brnd(4000, 14000);
+  setTimeout(() => {
+    if (room.phase !== 'play' || room.turnIdx !== turnIdx || room.turnLock) return;
+    resolveTurn(room, botChoice(q.answer, nOptions), false);
+  }, delay);
+}
+
+/* Simultané : le bot simule une partie progressive */
+function launchSimuBots(room) {
+  for (const p of room.players.values()) {
+    if (!p.isBot) continue;
+    const results = room.deck.map(item => {
+      const q = turnQuestion(item);
+      const correct = Math.random() < BOT_ACCURACY;
+      return { coins: correct ? q.reward : 0, correct };
+    });
+    let i = 0;
+    const step = () => {
+      if (room.phase !== 'play') return;
+      if (i >= results.length) {
+        p.finished = true;
+        const snap = snapshot(room);
+        broadcast(room, { t: 'leaderboard', players: snap.players, teams: snap.teams });
+        if ([...room.players.values()].every(x => x.finished)) endGame(room);
+        return;
+      }
+      const r = results[i];
+      p.coins += r.coins; if (r.correct) p.correct++;
+      p.progress = i + 1; i++;
+      const snap = snapshot(room);
+      broadcast(room, { t: 'leaderboard', players: snap.players, teams: snap.teams });
+      setTimeout(step, brnd(5000, 11000));
+    };
+    setTimeout(step, brnd(3000, 8000));
+  }
+}
+
 
 /* ---------- Déconnexion ---------- */
 function handleBye(cid) {
@@ -454,9 +723,12 @@ function handleBye(cid) {
 /* ---------- Messages ---------- */
 function handleMessage(ctx, m) {
   const cid = ctx.cid;
+  if (m.t === 'register' || m.t === 'login' || m.t === 'me') { handleAuth(cid, m); return; }
+  if (m.t === 'google-login') { handleGoogleLogin(cid, m); return; }
   if (m.t === 'create') {
     if (ctx.room) return;
     const player = { id: cid, name: cleanName(m.name) };
+    linkToken(player, m);
     const room = newRoom(player, m);
     ctx.room = room; ctx.player = player;
     sendTo(cid, snapshot(room));
@@ -511,6 +783,7 @@ function handleMessage(ctx, m) {
     if (room.phase !== 'lobby') { sendTo(cid, { t: 'error', msg: 'La partie est déjà commencée.' }); return; }
     if (room.players.size >= room.settings.maxPlayers) { sendTo(cid, { t: 'error', msg: 'La salle est pleine.' }); return; }
     const player = { id: cid, name: cleanName(m.name) };
+    linkToken(player, m);
     addPlayer(room, player);
     ctx.room = room; ctx.player = player;
     sendTo(cid, snapshot(room));
@@ -522,7 +795,34 @@ function handleMessage(ctx, m) {
   // Tableau hebdo — accessible même sans salle (écran d'accueil)
   if (m.t === 'get_board') {
     const b = BOARD.currentBoard();
-    sendTo(cid, { t: 'board', weekId: b.weekId, top: BOARD.boardTop(10) });
+    sendTo(cid, { t: 'board', weekId: b.weekId,
+      season: { weekId: b.weekId, label: seasonLabel(b.weekId) },
+      top: BOARD.boardTop(10) });
+    return;
+  }
+
+  // Transfert de cocottes entre comptes — accessible sans salle (accueil).
+  // Le solde de référence est stats.coins du compte (persistant).
+  if (m.t === 'transfer') {
+    const fail = (msg) => sendTo(cid, { t: 'transfer_result', ok: false, msg });
+    const fromTag = sessions.get(String(m.token || ''));
+    if (!fromTag || !accounts[fromTag]) { fail('Connecte-toi pour envoyer des cocottes.'); return; }
+    const wanted = cleanTag(m.to).toLowerCase();
+    if (!wanted) { fail('Destinataire inconnu.'); return; }
+    const toTag = Object.keys(accounts).find(t => t.toLowerCase() === wanted);
+    if (!toTag) { fail('Destinataire inconnu.'); return; }
+    if (toTag === fromTag) { fail('Tu ne peux pas t’envoyer des cocottes à toi-même.'); return; }
+    const amount = Math.floor(Number(m.amount));
+    if (!Number.isFinite(amount) || amount < 1 || amount > 1000) { fail('Montant invalide (1 à 1000).'); return; }
+    const from = accounts[fromTag], to = accounts[toTag];
+    if (!from.stats) from.stats = { games: 0, wins: 0, bestStreak: 0, coins: 0 };
+    if (!to.stats) to.stats = { games: 0, wins: 0, bestStreak: 0, coins: 0 };
+    if ((from.stats.coins || 0) < amount) { fail('Solde insuffisant.'); return; }
+    from.stats.coins -= amount;
+    to.stats.coins = (to.stats.coins || 0) + amount;
+    accountsDirty = true;
+    sendTo(cid, { t: 'transfer_result', ok: true,
+      msg: amount + ' cocottes envoyées à ' + toTag + '!', balance: from.stats.coins });
     return;
   }
 
@@ -554,8 +854,10 @@ function handleMessage(ctx, m) {
     if (!isHost || room.phase !== 'lobby') return;
     if (room.players.size < 1) { sendTo(cid, { t: 'error', msg: 'Il faut au moins un joueur.' }); return; }
     for (const p of room.players.values()) { p.coins = 0; p.correct = 0; p.progress = 0; p.finished = false; }
+    room.jokerKinds = {};
     room.phase = 'play';
     room.turnIdx = 0; room.lastTurn = null;
+    fillBots(room); // les bots occupent les places restantes
     if (room.settings.mode === 'duel') {
       const active = [...room.players.values()].filter(p => p.connected);
       if (active.length !== 2) { room.phase = 'lobby'; sendTo(cid, { t: 'error', msg: 'Le duel enflammé se joue à 2 joueurs.' }); return; }
@@ -564,7 +866,7 @@ function handleMessage(ctx, m) {
       room.duel = {
         qi: 0,
         questions: shuffled(bank.slice()).slice(0, DATA.duelCount || 20),
-        answers: {}, timer: null, wrongs: {}
+        answers: {}, timer: null, wrongs: {}, streaks: {}
       };
       room.rematch = false;
       room.lastWinner = null;
@@ -576,6 +878,7 @@ function handleMessage(ctx, m) {
     if (room.settings.mode === 'simu') {
       room.deck = shuffled(DATA.deckOrder);
       broadcast(room, { t: 'start', mode: 'simu', deck: room.deck, shiftName: DATA.shiftName });
+      launchSimuBots(room);
     } else {
       room.deck = DATA.deckOrder.slice();
       room.turnOrder = shuffled([...room.players.keys()]);
@@ -658,6 +961,65 @@ function handleMessage(ctx, m) {
     resolveTurn(room, choice, false);
     return;
   }
+  if (m.t === 'joker') {
+    // Jokers du conseiller : le pont connaît la bonne réponse, il répond en
+    // privé. Chaque joker : une fois par partie et par joueur. Le coût en
+    // cocottes est débité côté client seulement si ok:true.
+    const kind = m.kind;
+    if (kind !== 'fifty' && kind !== 'hint' && kind !== 'pass') return;
+    const jfail = (msg) => sendTo(cid, { t: 'joker_result', kind, ok: false, msg });
+    const firstLetter = (txt) => (String(txt || '').match(/[A-Za-zÀ-ÖØ-öø-ÿ]/) || ['?'])[0].toUpperCase();
+    if (room.settings.mode === 'duel') {
+      if (room.phase !== 'play' || !room.duel) { jfail('Aucune question en cours.'); return; }
+      const d = room.duel;
+      if (d.answers[player.name]) { jfail('Tu as déjà répondu à cette question.'); return; }
+      const q = d.questions[d.qi];
+      if (!q) { jfail('Aucune question en cours.'); return; }
+      d.jokerKinds = d.jokerKinds || {};
+      const used = d.jokerKinds[player.name] || (d.jokerKinds[player.name] = {});
+      if (used[kind]) { jfail('Joker déjà utilisé dans ce duel.'); return; }
+      used[kind] = true;
+      if (kind === 'pass') {
+        d.answers[player.name] = { choice: -1, skipped: true, at: Date.now() };
+        broadcast(room, { t: 'duel_answered', qi: d.qi + 1, name: player.name });
+        sendTo(cid, { t: 'joker_result', kind, ok: true });
+        const active = [...room.players.values()].filter(p => p.connected);
+        if (active.length && active.every(p => d.answers[p.name])) { clearTimeout(d.timer); resolveDuel(room); }
+        return;
+      }
+      if (kind === 'fifty') {
+        const wrong = q.options.map((_, i) => i).filter(i => i !== q.answer);
+        sendTo(cid, { t: 'joker_result', kind, ok: true, hide: shuffled(wrong).slice(0, 2) });
+        return;
+      }
+      sendTo(cid, { t: 'joker_result', kind, ok: true, letter: firstLetter(q.options[q.answer]) });
+      return;
+    }
+    if (room.settings.mode === 'tours') {
+      if (room.phase !== 'play' || room.turnLock) { jfail('Ce n’est pas le moment.'); return; }
+      if (activePlayer(room) !== player) { jfail('Ce n’est pas ton tour.'); return; }
+      room.jokerKinds = room.jokerKinds || {};
+      const used = room.jokerKinds[player.name] || (room.jokerKinds[player.name] = {});
+      if (used[kind]) { jfail('Joker déjà utilisé dans cette partie.'); return; }
+      const q = turnQuestion(room.deck[room.turnIdx]);
+      used[kind] = true;
+      if (kind === 'pass') {
+        sendTo(cid, { t: 'joker_result', kind, ok: true });
+        resolveTurn(room, -1, false, true);
+        return;
+      }
+      if (kind === 'fifty') {
+        const wrong = q.options.map((_, i) => i).filter(i => i !== q.answer);
+        const nHide = Math.max(0, Math.min(2, q.options.length - 2));
+        sendTo(cid, { t: 'joker_result', kind, ok: true, hide: shuffled(wrong).slice(0, nHide) });
+        return;
+      }
+      sendTo(cid, { t: 'joker_result', kind, ok: true, letter: firstLetter(q.options[q.answer]) });
+      return;
+    }
+    jfail('Joker indisponible dans ce mode.');
+    return;
+  }
   if (m.t === 'applaud') {
     if (room.phase !== 'play') return;
     broadcast(room, { t: 'applaud', from: player.name });
@@ -700,7 +1062,7 @@ mq.on('message', (topic, payload) => {
   if (!ctx) { ctx = { cid, room: null, player: null }; clients.set(cid, ctx); }
 
   if (topic === LOBBY) {
-    if (m.t !== 'create' && m.t !== 'join' && m.t !== 'get_board' && m.t !== 'watch') return;
+    if (m.t !== 'create' && m.t !== 'join' && m.t !== 'get_board' && m.t !== 'watch' && m.t !== 'register' && m.t !== 'login' && m.t !== 'me' && m.t !== 'google-login' && m.t !== 'transfer') return;
   } else {
     // message de salle : vérifier la cohérence minimale (le code vient du topic)
     const code = topic.split('/')[3];
