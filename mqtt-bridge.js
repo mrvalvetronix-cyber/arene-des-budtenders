@@ -1,5 +1,5 @@
 'use strict';
-/* Pont multijoueur « L’arène des budtender » — logique de jeu identique à server.js,
+/* Pont multijoueur « L’arène des budtenders » — logique de jeu identique à server.js,
    transport MQTT via le relais public EMQX (wss://broker.emqx.io:8084/mqtt).
    Le client (artefact statique) parle directement au relais ; ce pont fait autorité. */
 const mqtt = require('mqtt');
@@ -26,6 +26,7 @@ process.on('unhandledRejection', (e) => { logCrash('unhandledRejection', e); pro
 
 /* ---------- Comptes (gamertag + mot de passe) ---------- */
 const crypto = require('crypto');
+const cbor = require('cbor'); // WebAuthn : décodage CBOR de l'attestationObject
 const ACCOUNTS_FILE = path.join(__dirname, 'accounts.json');
 let accounts = {};
 try { accounts = JSON.parse(fs.readFileSync(ACCOUNTS_FILE, 'utf8')) || {}; }
@@ -43,6 +44,13 @@ const authAttempts = new Map(); // cid -> { n, reset }
 function cleanTag(t) {
   return String(t || '').trim().replace(/\s+/g, ' ').slice(0, 16);
 }
+/* Selfie optionnelle (data URL) : format strict, taille bornée (64 Ko).
+   Invalide = ignorée sans erreur bloquante. */
+const SELFIE_RE = /^data:image\/(jpeg|png|webp);base64,/;
+const SELFIE_MAX = 65536;
+function validSelfie(s) {
+  return typeof s === 'string' && s.length <= SELFIE_MAX && SELFIE_RE.test(s);
+}
 function hashPw(pw, salt) {
   return crypto.scryptSync(String(pw), salt, 32).toString('hex');
 }
@@ -50,7 +58,8 @@ function authOk(cid, tag) {
   const token = crypto.randomBytes(24).toString('hex');
   sessions.set(token, tag);
   if (sessions.size > 5000) { const k = sessions.keys().next().value; sessions.delete(k); }
-  sendTo(cid, { t: 'auth_ok', gamertag: tag, stats: accounts[tag].stats, token });
+  sendTo(cid, { t: 'auth_ok', gamertag: tag, stats: accounts[tag].stats,
+    selfie: accounts[tag].selfie || null, token });
 }
 function authRate(cid) {
   const now = Date.now();
@@ -69,28 +78,33 @@ function handleAuth(cid, m) {
   if (!authRate(cid)) { sendTo(cid, { t: 'auth_error', msg: 'Trop de tentatives, réessaie dans une minute.' }); return; }
   if (m.t === 'me') {
     const tag = sessions.get(String(m.token || ''));
-    if (tag && accounts[tag]) { sendTo(cid, { t: 'auth_ok', gamertag: tag, stats: accounts[tag].stats, token: m.token }); }
+    if (tag && accounts[tag]) { sendTo(cid, { t: 'auth_ok', gamertag: tag, stats: accounts[tag].stats,
+      selfie: accounts[tag].selfie || null, token: m.token }); }
     else sendTo(cid, { t: 'auth_error', msg: 'Session expirée.' });
     return;
   }
   const tag = cleanTag(m.gamertag);
   const pw = String(m.password || '');
-  if (tag.length < 3) { sendTo(cid, { t: 'auth_error', msg: 'Gamertag : 3 lettres minimum.' }); return; }
+  if (tag.length < 3) { sendTo(cid, { t: 'auth_error', msg: 'Pseudo : 3 lettres minimum.' }); return; }
   if (pw.length < 4) { sendTo(cid, { t: 'auth_error', msg: 'Mot de passe : 4 caractères minimum.' }); return; }
   if (pw.length > 72) { sendTo(cid, { t: 'auth_error', msg: 'Mot de passe trop long.' }); return; }
   if (m.t === 'register') {
     if (accounts[tag]) { sendTo(cid, { t: 'auth_error', msg: 'Ce gamertag est déjà pris.' }); return; }
     const salt = crypto.randomBytes(16).toString('hex');
     accounts[tag] = { salt, hash: hashPw(pw, salt), created: Date.now(),
-      stats: { games: 0, wins: 0, bestStreak: 0, coins: 0 } };
+      stats: { games: 0, wins: 0, bestStreak: 0, coins: 0 },
+      selfie: validSelfie(m.selfie) ? m.selfie : null };
     accountsDirty = true;
     authOk(cid, tag);
     return;
   }
   if (m.t === 'login') {
     const acc = accounts[tag];
-    const ok = acc && crypto.timingSafeEqual(Buffer.from(acc.hash, 'hex'), Buffer.from(hashPw(pw, acc.salt), 'hex'));
-    if (!ok) { sendTo(cid, { t: 'auth_error', msg: 'Gamertag ou mot de passe incorrect.' }); return; }
+    /* Compte sans mot de passe (ancien) : on refuse proprement plutôt que
+       de lever dans Buffer.from. */
+    if (!acc || !acc.hash) { sendTo(cid, { t: 'auth_error', msg: 'Pseudo ou mot de passe incorrect.' }); return; }
+    const ok = crypto.timingSafeEqual(Buffer.from(acc.hash, 'hex'), Buffer.from(hashPw(pw, acc.salt), 'hex'));
+    if (!ok) { sendTo(cid, { t: 'auth_error', msg: 'Pseudo ou mot de passe incorrect.' }); return; }
     authOk(cid, tag);
     return;
   }
@@ -115,67 +129,173 @@ function recordAccountStats(players, winnerName) {
   if (changed) accountsDirty = true;
 }
 
-/* ---------- Connexion Google (Google Identity Services) ----------
-   Le client envoie le jeton ID (credential GIS) via MQTT ; on le vérifie
-   auprès de Google avant de retrouver/créer le compte lié. */
-const GOOGLE_CLIENT_ID = '90665097871-pk0t2vshc5c22h6e86l9he2nvv0unltb.apps.googleusercontent.com';
-const GOOGLE_ISSUERS = new Set(['accounts.google.com', 'https://accounts.google.com']);
-
-/* Vérifie un jeton ID Google via le point tokeninfo. Ne lève jamais :
-   renvoie { ok:true, sub, email, name } ou { ok:false, msg }. */
-async function verifyGoogleToken(idToken) {
-  const tok = String(idToken || '').slice(0, 4096);
-  if (!/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(tok))
-    return { ok: false, msg: 'Jeton Google invalide.' };
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 8000);
-  try {
-    const res = await fetch('https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(tok),
-      { signal: ctrl.signal });
-    if (!res.ok) return { ok: false, msg: 'Jeton Google refusé.' };
-    const info = await res.json();
-    if (!info || typeof info !== 'object') return { ok: false, msg: 'Réponse Google invalide.' };
-    if (info.aud !== GOOGLE_CLIENT_ID) return { ok: false, msg: 'Jeton émis pour une autre application.' };
-    if (!GOOGLE_ISSUERS.has(String(info.iss))) return { ok: false, msg: 'Émetteur du jeton inconnu.' };
-    const exp = Number(info.exp);
-    if (!Number.isFinite(exp) || exp * 1000 <= Date.now()) return { ok: false, msg: 'Jeton Google expiré.' };
-    const sub = String(info.sub || '');
-    if (!sub) return { ok: false, msg: 'Jeton Google incomplet.' };
-    return { ok: true, sub, email: String(info.email || ''), name: String(info.name || '') };
-  } catch (e) {
-    const aborted = e && (e.name === 'AbortError' || e.name === 'TimeoutError');
-    return { ok: false, msg: aborted ? 'Google ne répond pas, réessaie.' : 'Vérification Google impossible.' };
-  } finally { clearTimeout(timer); }
-}
-/* Gamertag à partir du nom Google, suffixé en cas de collision. */
-function tagForGoogle(name) {
-  const base = cleanTag(name) || 'Gladiateur';
-  if (!accounts[base]) return base;
-  for (let i = 2; i < 1000; i++) {
-    const t = (base + ' ' + i).slice(0, 16);
-    if (!accounts[t]) return t;
+/* ---------- Selfies (pseudo) ----------
+   register accepte déjà une selfie optionnelle ; les clients peuvent aussi
+   la définir/mettre à jour ensuite (set_selfie, session requise) et la
+   lire pour n'importe quel pseudo (get_selfie, lecture publique, bornée). */
+const SELFIE_RATE_MAX = 20; // appels/min par cid
+const selfieRate = new Map(); // cid -> { n, reset }
+function selfieRateOk(cid) {
+  const now = Date.now();
+  let a = selfieRate.get(cid);
+  if (!a || now > a.reset) { a = { n: 0, reset: now + 60000 }; selfieRate.set(cid, a); }
+  a.n++;
+  if (selfieRate.size > 2000) { // purge opportuniste des fenêtres expirées
+    for (const [k, v] of selfieRate) if (now > v.reset) selfieRate.delete(k);
   }
-  return (base + ' ' + Date.now().toString(36)).slice(0, 16);
+  return a.n <= SELFIE_RATE_MAX;
 }
-function handleGoogleLogin(cid, m) {
+function handleSetSelfie(cid, m) {
+  if (!selfieRateOk(cid)) { sendTo(cid, { t: 'auth_error', msg: 'Trop de requêtes, réessaie dans une minute.' }); return; }
+  const tag = sessions.get(String(m.token || ''));
+  if (!tag || !accounts[tag]) { sendTo(cid, { t: 'auth_error', msg: 'Session expirée.' }); return; }
+  if (validSelfie(m.selfie)) { accounts[tag].selfie = m.selfie; accountsDirty = true; }
+  /* même si la selfie est invalide, on répond selfie_ok : on l'ignore juste */
+  sendTo(cid, { t: 'selfie_ok' });
+}
+function handleGetSelfie(cid, m) {
+  /* Borne anti-abus : on répond quand même (erreur), jamais de silence —
+     sinon le client attendrait indéfiniment sa réponse. */
+  if (!selfieRateOk(cid)) { sendTo(cid, { t: 'error', msg: 'Trop de requêtes, réessaie dans une minute.' }); return; }
+  const tag = cleanTag(m.gamertag);
+  const acc = accounts[tag];
+  sendTo(cid, { t: 'selfie', gamertag: tag, selfie: (acc && acc.selfie) || null });
+}
+
+/* ---------- WebAuthn / passkeys : reconnexion par empreinte ----------
+   Le mot de passe reste le repli. La page d'accueil gère l'UI (enrôlement
+   après création du profil, bouton « Se reconnecter avec mon empreinte »).
+   CHOIX DOCUMENTÉ : attestation 'none' acceptée — aucun certificat
+   d'attestation vérifié (suffisant pour un jeu, pas pour de la banque).
+   Sécurité : les challenges et les clés ne sont JAMAIS journalisés ;
+   challenges à usage unique, expirés après 5 min, purgés opportunément. */
+const RP_ID = 'mrvalvetronix-cyber.github.io';
+const RP_ORIGIN = 'https://' + RP_ID;
+const WEBAUTHN_TTL_MS = 5 * 60 * 1000;
+const webauthnChallenges = new Map(); // clé -> { challenge, op, tag, expires }
+function b64uToBuf(s) { return Buffer.from(String(s || ''), 'base64url'); }
+function bufToB64u(b) { return Buffer.from(b).toString('base64url'); }
+function rpIdHash() { return crypto.createHash('sha256').update(RP_ID).digest(); }
+function webauthnNewChallenge(key, op, tag) {
+  const challenge = bufToB64u(crypto.randomBytes(32));
+  webauthnChallenges.set(key, { challenge, op, tag, expires: Date.now() + WEBAUTHN_TTL_MS });
+  if (webauthnChallenges.size > 500) { // purge opportuniste des expirés
+    const now = Date.now();
+    for (const [k, v] of webauthnChallenges) if (now > v.expires) webauthnChallenges.delete(k);
+  }
+  return challenge;
+}
+/* Usage unique : consommé (supprimé) dans tous les cas, même en échec. */
+function webauthnTakeChallenge(key, op, tag) {
+  const c = webauthnChallenges.get(key);
+  if (!c) return null;
+  webauthnChallenges.delete(key);
+  if (c.op !== op || c.tag !== tag || Date.now() > c.expires) return null;
+  return c;
+}
+function webauthnCheckClientData(cd, wantType, challenge) {
+  return cd && cd.type === wantType && cd.origin === RP_ORIGIN && cd.challenge === challenge;
+}
+function handleWebauthnEnrollChallenge(cid, m) {
   if (!authRate(cid)) { sendTo(cid, { t: 'auth_error', msg: 'Trop de tentatives, réessaie dans une minute.' }); return; }
-  verifyGoogleToken(m.idToken).then((v) => {
-    if (!v.ok) { sendTo(cid, { t: 'auth_error', msg: v.msg }); return; }
-    let tag = null;
-    for (const t of Object.keys(accounts)) {
-      if (accounts[t] && accounts[t].googleSub === v.sub) { tag = t; break; }
-    }
-    if (!tag) {
-      tag = tagForGoogle(v.name);
-      accounts[tag] = { googleSub: v.sub, email: v.email, created: Date.now(),
-        stats: { games: 0, wins: 0, bestStreak: 0, coins: 0 } };
-      accountsDirty = true;
-    }
-    authOk(cid, tag);
-  }).catch((e) => {
-    console.error('google-login:', e && e.message);
-    sendTo(cid, { t: 'auth_error', msg: 'Vérification Google impossible.' });
-  });
+  const tag = sessions.get(String(m.token || ''));
+  if (!tag || !accounts[tag]) { sendTo(cid, { t: 'auth_error', msg: 'Session expirée.' }); return; }
+  const challenge = webauthnNewChallenge('e:' + String(m.token), 'enroll', tag);
+  sendTo(cid, { t: 'webauthn_challenge', op: 'enroll', challenge, rpId: RP_ID });
+}
+function handleWebauthnEnroll(cid, m) {
+  if (!authRate(cid)) { sendTo(cid, { t: 'auth_error', msg: 'Trop de tentatives, réessaie dans une minute.' }); return; }
+  const fail = () => sendTo(cid, { t: 'auth_error', msg: 'Enrôlement impossible.' });
+  const tag = sessions.get(String(m.token || ''));
+  if (!tag || !accounts[tag]) { fail(); return; }
+  const ch = webauthnTakeChallenge('e:' + String(m.token), 'enroll', tag);
+  if (!ch) { fail(); return; }
+  try {
+    const cred = m.credential || {};
+    const cd = JSON.parse(b64uToBuf(cred.response && cred.response.clientDataJSON).toString('utf8'));
+    if (!webauthnCheckClientData(cd, 'webauthn.create', ch.challenge)) { fail(); return; }
+    const attObj = cbor.decodeFirstSync(b64uToBuf(cred.response && cred.response.attestationObject));
+    /* cbor v10 : carte à clés texte -> objet JS brut (.authData), pas une Map */
+    const authDataRaw = (attObj && typeof attObj.get === 'function') ? attObj.get('authData') : attObj && attObj.authData;
+    const authData = Buffer.from(authDataRaw);
+    if (authData.length < 37) { fail(); return; }
+    if (!authData.subarray(0, 32).equals(rpIdHash())) { fail(); return; }
+    const flags = authData[32];
+    if (!(flags & 0x04)) { fail(); return; } // UV (empreinte) exigée
+    if (!(flags & 0x40)) { fail(); return; } // AT : données d'identifiant présentes
+    let off = 37 + 16; // signCount(4) déjà comptés dans 37, + AAGUID(16)
+    const credIdLen = authData.readUInt16BE(off); off += 2;
+    if (credIdLen <= 0 || off + credIdLen > authData.length) { fail(); return; }
+    const credId = authData.subarray(off, off + credIdLen); off += credIdLen;
+    const coseKey = cbor.decodeFirstSync(authData.subarray(off));
+    if (coseKey.get(1) !== 2 || coseKey.get(3) !== -7 || coseKey.get(-1) !== 1) { fail(); return; } // EC2 / ES256 / P-256
+    const x = Buffer.from(coseKey.get(-2)), y = Buffer.from(coseKey.get(-3));
+    if (x.length !== 32 || y.length !== 32) { fail(); return; }
+    const keys = accounts[tag].webauthn || (accounts[tag].webauthn = []);
+    /* Borne : une session compromise ne peut pas gonfler accounts.json avec
+       des enrôlements répétés — 10 empreintes, c'est déjà très large. */
+    if (keys.length >= 10) { fail(); return; }
+    keys.push({ credId: bufToB64u(credId),
+      jwk: { kty: 'EC', crv: 'P-256', x: bufToB64u(x), y: bufToB64u(y) },
+      created: Date.now() });
+    accountsDirty = true;
+    sendTo(cid, { t: 'webauthn_ok' });
+  } catch (e) { fail(); }
+}
+function handleWebauthnLoginChallenge(cid, m) {
+  if (!authRate(cid)) { sendTo(cid, { t: 'auth_error', msg: 'Trop de tentatives, réessaie dans une minute.' }); return; }
+  const tag = cleanTag(m.gamertag);
+  const acc = accounts[tag];
+  if (!acc || !Array.isArray(acc.webauthn) || !acc.webauthn.length) {
+    sendTo(cid, { t: 'auth_error', msg: 'Pas d’empreinte enrôlée pour ce pseudo.' }); return;
+  }
+  const challenge = webauthnNewChallenge('l:' + tag, 'login', tag);
+  sendTo(cid, { t: 'webauthn_challenge', op: 'login', challenge, rpId: RP_ID,
+    allowCredentials: acc.webauthn.map((k) => ({ type: 'public-key', id: k.credId })) });
+}
+function handleWebauthnLogin(cid, m) {
+  if (!authRate(cid)) { sendTo(cid, { t: 'auth_error', msg: 'Trop de tentatives, réessaie dans une minute.' }); return; }
+  const bad = () => sendTo(cid, { t: 'auth_error', msg: 'Empreinte refusée. Essaie ton mot de passe.' });
+  const tag = cleanTag(m.gamertag);
+  const acc = accounts[tag];
+  if (!acc) { bad(); return; }
+  const a = m.assertion || {};
+  const resp = a.response || {};
+  let cd;
+  try { cd = JSON.parse(b64uToBuf(resp.clientDataJSON).toString('utf8')); }
+  catch (e) { bad(); return; }
+  const ch = webauthnTakeChallenge('l:' + tag, 'login', tag); // unique + expiré => null
+  if (!ch) { bad(); return; }
+  if (!webauthnCheckClientData(cd, 'webauthn.get', ch.challenge)) { bad(); return; }
+  let credIdB64u;
+  try { credIdB64u = bufToB64u(b64uToBuf(a.rawId || a.id)); }
+  catch (e) { bad(); return; }
+  const key = (acc.webauthn || []).find((k) => k.credId === credIdB64u);
+  if (!key || !key.jwk) { bad(); return; }
+  let authData;
+  try { authData = b64uToBuf(resp.authenticatorData); }
+  catch (e) { bad(); return; }
+  if (authData.length < 37) { bad(); return; }
+  if (!authData.subarray(0, 32).equals(rpIdHash())) { bad(); return; }
+  if (!(authData[32] & 0x04)) { bad(); return; } // UV exigée
+  let signature, signed;
+  try {
+    signature = b64uToBuf(resp.signature);
+    const cdHash = crypto.createHash('sha256').update(b64uToBuf(resp.clientDataJSON)).digest();
+    signed = Buffer.concat([authData, cdHash]);
+  } catch (e) { bad(); return; }
+  if (signature.length !== 64) { bad(); return; } // WebAuthn : R||S bruts (P-1363)
+  let pub;
+  try { pub = crypto.createPublicKey({ key: key.jwk, format: 'jwk' }); }
+  catch (e) { bad(); return; }
+  let ok = false;
+  /* WebAuthn signe en R||S bruts (IEEE P-1363), pas en DER : crypto.verify
+     n'accepte ce format que via dsaEncoding explicite. Sans ça, toute
+     empreinte valide était refusée. */
+  try { ok = crypto.verify('sha256', signed, { key: pub, dsaEncoding: 'ieee-p1363' }, signature); }
+  catch (e) { ok = false; }
+  if (!ok) { bad(); return; }
+  authOk(cid, tag); // même auth_ok (token + selfie) que le login normal
 }
 
 /* ---------- Banque de questions du duel (renouvelée chaque dimanche) ---------- */
@@ -257,7 +377,6 @@ const LOBBY = NS + '/lobby';
 const STATUS_WILD = NS + '/c/+/status';
 const UP_WILD = NS + '/r/+/up';
 const inboxOf = (cid) => NS + '/c/' + cid + '/down';
-const roomUpOf = (code) => NS + '/r/' + code + '/up';
 const roomDownOf = (code) => NS + '/r/' + code + '/down';
 
 const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
@@ -734,7 +853,12 @@ function handleBye(cid) {
 function handleMessage(ctx, m) {
   const cid = ctx.cid;
   if (m.t === 'register' || m.t === 'login' || m.t === 'me') { handleAuth(cid, m); return; }
-  if (m.t === 'google-login') { handleGoogleLogin(cid, m); return; }
+  if (m.t === 'set_selfie') { handleSetSelfie(cid, m); return; }
+  if (m.t === 'get_selfie') { handleGetSelfie(cid, m); return; }
+  if (m.t === 'webauthn_enroll_challenge') { handleWebauthnEnrollChallenge(cid, m); return; }
+  if (m.t === 'webauthn_enroll') { handleWebauthnEnroll(cid, m); return; }
+  if (m.t === 'webauthn_login_challenge') { handleWebauthnLoginChallenge(cid, m); return; }
+  if (m.t === 'webauthn_login') { handleWebauthnLogin(cid, m); return; }
   if (m.t === 'create') {
     if (ctx.room) return;
     const player = { id: cid, name: cleanName(m.name) };
@@ -1059,7 +1183,9 @@ function handleMessage(ctx, m) {
 /* ---------- Routage MQTT ---------- */
 mq.on('message', (topic, payload) => {
   let m;
-  try { m = JSON.parse(payload.toString().slice(0, 8192)); } catch (e) { return; }
+  /* Plafond entrant : 70 Ko pour laisser passer une selfie data URL valide
+     (bornée à 64 Ko par validSelfie) ; au-delà, le JSON est tronqué et ignoré. */
+  try { m = JSON.parse(payload.toString().slice(0, 70000)); } catch (e) { return; }
   if (!m || typeof m !== 'object') return;
 
   // statut / testament d'un client
@@ -1076,7 +1202,7 @@ mq.on('message', (topic, payload) => {
   if (!ctx) { ctx = { cid, room: null, player: null }; clients.set(cid, ctx); }
 
   if (topic === LOBBY) {
-    if (m.t !== 'create' && m.t !== 'join' && m.t !== 'get_board' && m.t !== 'watch' && m.t !== 'register' && m.t !== 'login' && m.t !== 'me' && m.t !== 'google-login' && m.t !== 'transfer') return;
+    if (m.t !== 'create' && m.t !== 'join' && m.t !== 'get_board' && m.t !== 'watch' && m.t !== 'register' && m.t !== 'login' && m.t !== 'me' && m.t !== 'set_selfie' && m.t !== 'get_selfie' && m.t !== 'webauthn_enroll_challenge' && m.t !== 'webauthn_enroll' && m.t !== 'webauthn_login_challenge' && m.t !== 'webauthn_login' && m.t !== 'transfer') return;
   } else {
     // message de salle : vérifier la cohérence minimale (le code vient du topic)
     const code = topic.split('/')[3];
@@ -1086,4 +1212,4 @@ mq.on('message', (topic, payload) => {
   catch (e) { console.error('handleMessage:', e.message); sendTo(cid, { t: 'error', msg: 'Oups, petit hoquet du serveur.' }); }
 });
 
-console.log('🌉 Pont « L’arène des budtender » — démarrage, connexion au relais…');
+console.log('🌉 Pont « L’arène des budtenders » — démarrage, connexion au relais…');

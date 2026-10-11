@@ -3,36 +3,566 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>L’arène des budtender · Budtender Arena</title>
+<meta name="description" content="L'arène des budtenders — quiz multijoueur en temps réel. Entre ton pseudo et joue. / Budtender Arena — live multiplayer quiz.">
+<title>L’arène des budtenders · Budtender Arena</title>
+<script src="https://unpkg.com/mqtt@5.16.0/dist/mqtt.min.js"></script>
 <style>
   * { box-sizing: border-box; }
-  body { font-family: system-ui, -apple-system, sans-serif; background: #14101f; color: #f2e9ff;
-         display: flex; flex-direction: column; align-items: center; justify-content: center;
-         min-height: 100vh; margin: 0; text-align: center; padding: 1rem; }
-  h1 { font-size: 2.4rem; margin: 0 0 .4rem; }
-  h1 .en { display: block; font-size: 1.3rem; color: #b9a8d6; font-weight: 400; margin-top: .3rem; }
-  .tagline { color: #b9a8d6; max-width: 36rem; margin: .5rem 0 0; }
-  .tagline .en { display: block; margin-top: .4rem; font-size: .95rem; }
-  .langpick { display: flex; gap: 1rem; margin-top: 2rem; flex-wrap: wrap; justify-content: center; }
-  a.lang { display: flex; flex-direction: column; align-items: center; gap: .3rem;
-           padding: 1.2rem 2.2rem; border-radius: 1rem; text-decoration: none; font-weight: 700;
-           font-size: 1.15rem; border: 2px solid #8a5cf6; color: #fff; background: #241a3d;
-           min-width: 13rem; transition: transform .12s, background .12s; }
-  a.lang small { font-weight: 400; color: #b9a8d6; font-size: .9rem; }
-  a.lang:hover { background: #8a5cf6; transform: translateY(-2px); }
-  .note { margin-top: 2.2rem; font-size: .85rem; color: #8f7fb3; max-width: 34rem; }
+  :root {
+    --ink:#f0f7f2; --muted:#9db4a4;
+    --panel:#11221a; --surface:rgba(255,255,255,.045); --surface-2:rgba(255,255,255,.07);
+    --line:rgba(198,255,214,.13);
+    --amber:#ff7f41; --amber-2:#ff9a55; --green:#1fd977; --green-2:#0da85f; --red:#ff6f61;
+  }
+  body {
+    background: radial-gradient(120% 90% at 50% 0%,#0e1f14 0%,#0a120d 55%,#060b08 100%);
+    background-attachment: fixed; color: var(--ink);
+    font-family: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
+    margin: 0; min-height: 100vh; display: flex; flex-direction: column; align-items: center;
+    padding: 1rem 1rem 2rem;
+  }
+  /* Braises flottantes (même esprit que le client multi-mqtt) */
+  #ambience { position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
+  #ambience i { position: absolute; bottom: -24px; border-radius: 50%; background: var(--amber);
+    animation: riseEmbers var(--t,12s) linear infinite; animation-delay: var(--dl,0s); opacity: var(--o,.4); }
+  @keyframes riseEmbers {
+    0% { transform: translate(0,0); opacity: 0; } 12% { opacity: var(--o,.4); }
+    85% { opacity: var(--o,.4); } 100% { transform: translate(var(--dx,0px),-108vh); opacity: 0; }
+  }
+  main { position: relative; z-index: 1; width: 100%; max-width: 26rem; display: flex; flex-direction: column; gap: 1rem; }
+  .langbar { display: flex; justify-content: flex-end; }
+  .langbar button {
+    background: var(--surface); color: var(--muted); border: 1px solid var(--line);
+    border-radius: 999px; padding: .3rem .9rem; font-size: .85rem; font-weight: 700; cursor: pointer;
+  }
+  .langbar button.on { background: var(--amber); border-color: var(--amber); color: #1d0e02; }
+  h1 { font-size: 2.1rem; margin: 0; text-align: center; color: var(--amber);
+       text-shadow: 0 0 24px rgba(255,127,65,.35); }
+  .tagline { color: var(--muted); text-align: center; margin: 0; font-size: .95rem; }
+  .panel {
+    background: linear-gradient(180deg,#11221a 0%,#0c1712 100%);
+    border: 1px solid var(--line); border-radius: 18px; padding: 1.2rem;
+    box-shadow: 0 26px 60px rgba(0,0,0,.55);
+  }
+  .profile { display: flex; align-items: center; gap: 1rem; }
+  .avatar {
+    width: 84px; height: 84px; border-radius: 50%; flex: 0 0 auto; overflow: hidden;
+    border: 2px solid var(--amber); background: var(--surface);
+    display: flex; align-items: center; justify-content: center; font-size: 2.2rem;
+  }
+  .avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .profile label.btn { font-size: .9rem; padding: .55rem 1.1rem; }
+  .profile .opt { display: block; font-size: .75rem; color: var(--muted); margin-top: .3rem; }
+  .field { display: block; margin-top: .9rem; }
+  .field input {
+    width: 100%; background: var(--surface); border: 1px solid var(--line); color: var(--ink);
+    border-radius: 999px; padding: .8rem 1.2rem; font-size: 1.05rem; outline: none;
+  }
+  .field input::placeholder { color: #708b79; }
+  .field input:focus { border-color: var(--amber); box-shadow: 0 0 0 2px rgba(255,127,65,.25); }
+  button.btn, label.btn {
+    display: inline-block; border: none; cursor: pointer; border-radius: 999px;
+    font-weight: 800; text-align: center;
+  }
+  .btn-main {
+    width: 100%; margin-top: 1.1rem; padding: .95rem; font-size: 1.15rem;
+    background: linear-gradient(180deg, var(--amber-2), var(--amber)); color: #2a1200;
+    box-shadow: 0 12px 30px rgba(255,127,65,.35), inset 0 1px 0 rgba(255,255,255,.45);
+  }
+  .btn-main:active { transform: translateY(1px); }
+  .btn-main:disabled { opacity: .55; cursor: wait; }
+  .btn-sec {
+    width: 100%; margin-top: .7rem; padding: .75rem; font-size: .95rem;
+    background: var(--surface-2); color: var(--ink); border: 1px solid var(--line);
+  }
+  .err { min-height: 1.4em; margin-top: .8rem; font-size: .9rem; color: var(--red); text-align: center; }
+  .retry-note { margin-top: .6rem; font-size: .85rem; color: var(--muted); text-align: center; }
+  .fp-card h3 { margin: 0 0 .4rem; font-size: 1.05rem; color: var(--amber); }
+  .fp-card p { margin: 0 0 1rem; font-size: .9rem; color: var(--muted); }
+  .fp-row { display: flex; gap: .7rem; }
+  .fp-row .btn-main { margin-top: 0; flex: 1; font-size: 1rem; padding: .7rem; }
+  .fp-row .btn-sec { margin-top: 0; flex: 1; padding: .7rem; }
+  .fp-done { text-align: center; color: var(--green); font-weight: 700; padding: .6rem 0; }
+  .foot { text-align: center; font-size: .82rem; color: #8fa393; line-height: 1.7; }
+  .foot a { color: var(--amber); }
+  .hidden { display: none !important; }
 </style>
 </head>
 <body>
-  <h1>🌿 L’arène des budtender<span class="en">Budtender Arena</span></h1>
-  <p class="tagline">
-    Jeu questionnaire multijoueur — affronte tes amis en temps réel, même deck de questions, classement en direct.
-    <span class="en">Multiplayer quiz game — challenge your friends live, same question deck, live leaderboard.</span>
-  </p>
-  <div class="langpick">
-    <a class="lang" href="multi-mqtt.html">🇫🇷 Français<small>Entrer dans l’arène</small></a>
-    <a class="lang" href="en/multi-mqtt.html">🇬🇧 English<small>Enter the arena</small></a>
+<div id="ambience" aria-hidden="true"></div>
+<main>
+  <div class="langbar" role="group" aria-label="Langue / Language">
+    <button id="langFr" type="button">FR</button>
+    <button id="langEn" type="button" style="margin-left:.4rem">EN</button>
   </div>
-  <p class="note">Multijoueur via relais public — aucun compte requis. · Multiplayer over a public relay — no account needed.<br>21+ · Jeu destiné aux adultes · Adult game</p>
+
+  <h1 id="title">🌿 L’arène des budtenders</h1>
+  <p class="tagline" data-i18n="tagline"></p>
+
+  <section class="panel">
+    <div class="profile">
+      <div class="avatar" id="avatar">👤</div>
+      <div>
+        <label class="btn btn-sec" for="selfieFile" data-i18n="selfieBtn" style="width:auto"></label>
+        <input type="file" id="selfieFile" accept="image/*" class="hidden" capture="user">
+        <span class="opt" data-i18n="selfieOpt"></span>
+      </div>
+    </div>
+
+    <label class="field">
+      <input id="pseudo" type="text" autocomplete="nickname" maxlength="16" data-i18n-ph="pseudoPh">
+    </label>
+    <label class="field">
+      <input id="pw" type="password" autocomplete="current-password" maxlength="72" data-i18n-ph="pwPh">
+    </label>
+
+    <button class="btn btn-main" id="btnEnter" type="button" data-i18n="enterBtn"></button>
+    <button class="btn btn-sec hidden" id="btnFp" type="button" data-i18n="fpBtn"></button>
+    <div class="err" id="err" aria-live="polite"></div>
+    <div class="retry-note hidden" id="retryNote"></div>
+  </section>
+
+  <section class="panel fp-card hidden" id="fpCard">
+    <h3 data-i18n="fpTitle"></h3>
+    <p data-i18n="fpBody"></p>
+    <div class="fp-row" id="fpRow">
+      <button class="btn btn-main" id="btnFpOn" type="button" data-i18n="fpOn"></button>
+      <button class="btn btn-sec" id="btnFpLater" type="button" data-i18n="fpLater"></button>
+    </div>
+    <div class="fp-done hidden" id="fpDone" data-i18n="fpDone"></div>
+  </section>
+
+  <footer class="foot">
+    <span data-i18n="note"></span><br>
+    <a id="survey" href="https://docs.google.com/forms/d/e/1FAIpQLSf39GXC1-Is3m7N6PYqQqNOwlddmVV8CPLhw3xGm8FQjqTvpg/viewform" target="_blank" rel="noopener" data-i18n="survey"></a>
+  </footer>
+</main>
+
+<script>
+'use strict';
+/* ==========================================================================
+ * Accueil « L’arène des budtenders » — le parcours le plus court possible.
+ *
+ * CHOIX DE DESIGN (bascule Créer/Login supprimée) :
+ * Un seul bouton « Entrer dans l’arène » envoie toujours un `register`.
+ * Si le pont répond « déjà pris », on retente automatiquement en `login`
+ * avec les mêmes champs (petite note affichée). Résultat : 1 champ pseudo +
+ * 1 champ mot de passe + 1 clic, sans que le joueur ait à savoir s’il a déjà
+ * un compte. Le mot de passe reste toujours le repli si l’empreinte échoue.
+ * ========================================================================== */
+
+/* ---------- Dictionnaire FR/EN fait main ---------- */
+var I18N = {
+  fr: {
+    title: '🌿 L’arène des budtenders',
+    tagline: 'Quiz multijoueur en temps réel — entre ton pseudo et affronte l’arène.',
+    selfieBtn: '📸 Choisir un selfie',
+    selfieOpt: 'optionnel — visible dans l’arène',
+    pseudoPh: 'Pseudo (3 à 16 lettres)',
+    pwPh: 'Mot de passe (4 caractères min.)',
+    enterBtn: '🔥 Entrer dans l’arène',
+    fpBtn: '🔓 Se reconnecter avec mon empreinte',
+    note: 'Multijoueur via relais public · 21+ · Jeu destiné aux adultes',
+    survey: '💬 Donne ton avis (sondage)',
+    retryNote: 'Ce pseudo existe déjà — on te reconnecte…',
+    fpTitle: '🔓 Reconnexion par empreinte',
+    fpBody: 'La prochaine fois, un doigt suffit — sans mot de passe.',
+    fpOn: 'Activer', fpLater: 'Plus tard',
+    fpDone: '✅ Empreinte activée.',
+    errPseudo: 'Pseudo : 3 lettres minimum.',
+    errPseudoMax: 'Pseudo : 16 caractères maximum.',
+    errPw: 'Mot de passe : 4 caractères minimum.',
+    errPwMax: 'Mot de passe : 72 caractères maximum.',
+    errSelfieType: 'Ce fichier n’est pas une image.',
+    errSelfieRead: 'Image illisible — essaie une autre photo.',
+    errBroker: 'Impossible de joindre l’arène — vérifie ta connexion.',
+    busy: 'Connexion en cours…',
+    fpNeedPseudo: 'Entre d’abord ton pseudo pour utiliser ton empreinte.',
+    fpNoKey: 'Aucune empreinte enregistrée pour ce pseudo — utilise ton mot de passe.',
+    fpFail: 'Empreinte refusée — essaie ton mot de passe.'
+  },
+  en: {
+    title: '🌿 Budtender Arena',
+    tagline: 'Live multiplayer quiz — enter your nickname and face the arena.',
+    selfieBtn: '📸 Pick a selfie',
+    selfieOpt: 'optional — shown in the arena',
+    pseudoPh: 'Nickname (3–16 characters)',
+    pwPh: 'Password (4+ characters)',
+    enterBtn: '🔥 Enter the arena',
+    fpBtn: '🔓 Sign back in with my fingerprint',
+    note: 'Multiplayer over a public relay · 21+ · Adults only',
+    survey: '💬 Share your feedback (survey)',
+    retryNote: 'That nickname already exists — signing you back in…',
+    fpTitle: '🔓 Fingerprint sign-in',
+    fpBody: 'Next time, one touch is enough — no password needed.',
+    fpOn: 'Enable', fpLater: 'Later',
+    fpDone: '✅ Fingerprint enabled.',
+    errPseudo: 'Nickname: at least 3 characters.',
+    errPseudoMax: 'Nickname: 16 characters max.',
+    errPw: 'Password: at least 4 characters.',
+    errPwMax: 'Password: 72 characters max.',
+    errSelfieType: 'That file is not an image.',
+    errSelfieRead: 'Unreadable image — try another photo.',
+    errBroker: 'Can’t reach the arena — check your connection.',
+    busy: 'Connecting…',
+    fpNeedPseudo: 'Enter your nickname first to use your fingerprint.',
+    fpNoKey: 'No fingerprint registered for this nickname — use your password.',
+    fpFail: 'Fingerprint declined — try your password.'
+  }
+};
+var lang = 'fr';
+try {
+  var savedLang = localStorage.getItem('arena_lang');
+  if (savedLang === 'en' || savedLang === 'fr') lang = savedLang;
+} catch (e) {}
+function T(k) { return (I18N[lang] && I18N[lang][k]) || I18N.fr[k] || k; }
+function applyLang() {
+  document.documentElement.lang = lang;
+  document.getElementById('title').textContent = T('title');
+  var els = document.querySelectorAll('[data-i18n]');
+  for (var i = 0; i < els.length; i++) els[i].textContent = T(els[i].getAttribute('data-i18n'));
+  var phs = document.querySelectorAll('[data-i18n-ph]');
+  for (var j = 0; j < phs.length; j++) phs[j].placeholder = T(phs[j].getAttribute('data-i18n-ph'));
+  document.getElementById('langFr').classList.toggle('on', lang === 'fr');
+  document.getElementById('langEn').classList.toggle('on', lang === 'en');
+}
+function setLang(l) {
+  lang = l;
+  try { localStorage.setItem('arena_lang', l); } catch (e) {}
+  applyLang();
+}
+
+/* ---------- Braises ---------- */
+(function embers() {
+  var box = document.getElementById('ambience');
+  for (var i = 0; i < 26; i++) {
+    var s = document.createElement('i');
+    var sz = 2 + Math.random() * 4;
+    s.style.width = s.style.height = sz.toFixed(1) + 'px';
+    s.style.left = (Math.random() * 100).toFixed(1) + '%';
+    s.style.setProperty('--t', (8 + Math.random() * 10).toFixed(1) + 's');
+    s.style.setProperty('--dl', (-Math.random() * 14).toFixed(1) + 's');
+    s.style.setProperty('--o', (.25 + Math.random() * .4).toFixed(2));
+    s.style.setProperty('--dx', ((Math.random() - .5) * 120).toFixed(0) + 'px');
+    box.appendChild(s);
+  }
+})();
+
+/* ---------- Helpers ---------- */
+function $(id) { return document.getElementById(id); }
+function showErr(msg) { var e = $('err'); e.textContent = msg || ''; }
+
+/* ---------- Selfie : redimensionnée 160×160 (cover), JPEG ~0.7 ---------- */
+var selfieDataUrl = null;
+$('selfieFile').addEventListener('change', function (ev) {
+  var f = ev.target.files && ev.target.files[0];
+  if (!f) return;
+  if (!/^image\//.test(f.type || '')) { showErr(T('errSelfieType')); return; }
+  showErr('');
+  var url = URL.createObjectURL(f);
+  var img = new Image();
+  img.onload = function () {
+    URL.revokeObjectURL(url);
+    try {
+      var c = document.createElement('canvas');
+      c.width = c.height = 160;
+      var g = c.getContext('2d');
+      var s = Math.max(160 / img.width, 160 / img.height);
+      var w = img.width * s, h = img.height * s;
+      g.drawImage(img, (160 - w) / 2, (160 - h) / 2, w, h);
+      selfieDataUrl = c.toDataURL('image/jpeg', 0.7);
+    } catch (e) { showErr(T('errSelfieRead')); return; }
+    var av = $('avatar');
+    av.innerHTML = '';
+    var im = document.createElement('img');
+    im.src = selfieDataUrl;
+    im.alt = 'Selfie';
+    av.appendChild(im);
+  };
+  img.onerror = function () { URL.revokeObjectURL(url); showErr(T('errSelfieRead')); };
+  img.src = url;
+});
+
+/* ---------- base64url (WebAuthn) ---------- */
+function b64ToBytes(s) {
+  s = String(s).replace(/-/g, '+').replace(/_/g, '/');
+  while (s.length % 4) s += '=';
+  var b = atob(s), a = new Uint8Array(b.length);
+  for (var i = 0; i < b.length; i++) a[i] = b.charCodeAt(i);
+  return a;
+}
+function bytesToB64(buf) {
+  var u = new Uint8Array(buf), b = '';
+  for (var i = 0; i < u.length; i++) b += String.fromCharCode(u[i]);
+  return btoa(b).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+/* ---------- MQTT (même protocole que le client) ---------- */
+var MQTT_URL = 'wss://broker.emqx.io:8084/mqtt';
+var LOBBY = 'budtender/v1/lobby';
+var RP_ID = 'mrvalvetronix-cyber.github.io';
+var cid = 'c' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+var client = null, connected = false, pending = null;
+
+function inboxTopic() { return 'budtender/v1/c/' + cid + '/down'; }
+function route(m) {
+  if (!m || typeof m.t !== 'string') return;
+  if (pending && pending.types.indexOf(m.t) !== -1) {
+    var p = pending; pending = null;
+    clearTimeout(p.timer);
+    p.resolve(m);
+  }
+}
+function waitFor(types, ms) {
+  return new Promise(function (resolve, reject) {
+    if (pending) { try { clearTimeout(pending.timer); pending.reject(new Error('superseded')); } catch (e) {} }
+    var timer = setTimeout(function () {
+      if (pending && pending.resolve === resolve) { pending = null; reject(new Error('timeout')); }
+    }, ms);
+    pending = { types: types, resolve: resolve, reject: reject, timer: timer };
+  });
+}
+function connect() {
+  if (client && connected) return Promise.resolve();
+  return new Promise(function (resolve, reject) {
+    if (typeof mqtt === 'undefined') { reject(new Error('no-lib')); return; }
+    try {
+      client = mqtt.connect(MQTT_URL, { clientId: cid, clean: true, reconnectPeriod: 2500, connectTimeout: 20000 });
+    } catch (e) { reject(e); return; }
+    var done = false;
+    var timer = setTimeout(function () { if (!done) { done = true; reject(new Error('timeout')); } }, 20000);
+    client.on('connect', function () {
+      client.subscribe(inboxTopic(), { qos: 1 }, function () {
+        if (!done) { done = true; clearTimeout(timer); connected = true; resolve(); }
+      });
+    });
+    client.on('message', function (topic, payload) {
+      try { route(JSON.parse(payload.toString())); } catch (e) {}
+    });
+    client.on('error', function () { if (!done) { done = true; clearTimeout(timer); reject(new Error('mqtt')); } });
+  });
+}
+function send(m) {
+  m.cid = cid;
+  client.publish(LOBBY, JSON.stringify(m), { qos: 1 });
+}
+
+/* ---------- Auth : un seul bouton ---------- */
+var busy = false;
+function readFields() {
+  return {
+    pseudo: ($('pseudo').value || '').trim().replace(/\s+/g, ' '),
+    pw: $('pw').value || ''
+  };
+}
+function validate(pseudo, pw) {
+  if (pseudo.length < 3) return T('errPseudo');
+  if (pseudo.length > 16) return T('errPseudoMax');
+  if (pw.length < 4) return T('errPw');
+  if (pw.length > 72) return T('errPwMax');
+  return null;
+}
+function storeSession(m, wasRegister) {
+  try {
+    localStorage.setItem('arena_token', m.token);
+    localStorage.setItem('arena_tag', m.gamertag);
+    var selfie = selfieDataUrl || m.selfie;
+    if (selfie) localStorage.setItem('arena_selfie', selfie);
+    if (wasRegister) sessionStorage.setItem('arena_first_time', '1');
+  } catch (e) {}
+}
+function goToGame() {
+  location.href = (lang === 'en') ? 'en/multi-mqtt.html' : 'multi-mqtt.html';
+}
+
+async function doEnter() {
+  if (busy) return;
+  busy = true;
+  showErr('');
+  $('retryNote').classList.add('hidden');
+  var btn = $('btnEnter');
+  btn.disabled = true;
+  btn.textContent = T('busy');
+  var wasRegister = false;
+  try {
+    var f = readFields();
+    var verr = validate(f.pseudo, f.pw);
+    if (verr) { showErr(verr); return; }
+    await connect();
+    var payload = { t: 'register', gamertag: f.pseudo, password: f.pw };
+    if (selfieDataUrl) payload.selfie = selfieDataUrl;
+    send(payload);
+    var m = await waitFor(['auth_ok', 'auth_error'], 30000);
+    if (m.t === 'auth_ok') {
+      wasRegister = true;
+    } else {
+      /* Pseudo déjà pris → on retente en login avec les mêmes champs, sans
+         demander au joueur de comprendre la différence register/login. */
+      var msg = String(m.msg || '');
+      if (msg.indexOf('déjà pris') !== -1 || msg.indexOf('already taken') !== -1) {
+        $('retryNote').textContent = T('retryNote');
+        $('retryNote').classList.remove('hidden');
+        var payload2 = { t: 'login', gamertag: f.pseudo, password: f.pw };
+        if (selfieDataUrl) payload2.selfie = selfieDataUrl;
+        send(payload2);
+        m = await waitFor(['auth_ok', 'auth_error'], 30000);
+      }
+      if (m.t !== 'auth_ok') { showErr(m.msg || 'Erreur.'); return; }
+    }
+    storeSession(m, wasRegister);
+    await maybeEnroll(m.token, m.gamertag, wasRegister);
+  } catch (e) {
+    showErr(T('errBroker'));
+  } finally {
+    busy = false;
+    btn.disabled = false;
+    btn.textContent = T('enterBtn');
+  }
+}
+
+/* ---------- WebAuthn : disponibilité ---------- */
+async function platformAuthAvailable() {
+  try {
+    if (!window.PublicKeyCredential) return false;
+    if (typeof PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable !== 'function') return false;
+    return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+  } catch (e) { return false; }
+}
+
+/* ---------- 1. Enrôlement (optionnel, jamais bloquant) ---------- */
+async function maybeEnroll(token, tag, wasRegister) {
+  if (!wasRegister) { goToGame(); return; }
+  var ok = await platformAuthAvailable();
+  if (!ok) { goToGame(); return; }
+  /* Proposition non bloquante : la redirection attend le choix, mais aucun
+     échec (refus, erreur, timeout) n’empêche jamais l’accès au jeu. */
+  $('fpCard').classList.remove('hidden');
+  $('fpDone').classList.add('hidden');
+  $('fpRow').classList.remove('hidden');
+  var done = false;
+  var finish = function () { if (!done) { done = true; goToGame(); } };
+  $('btnFpLater').onclick = finish;
+  $('btnFpOn').onclick = async function () {
+    try {
+      send({ t: 'webauthn_enroll_challenge', token: token });
+      var ch = await waitFor(['webauthn_challenge', 'auth_error'], 30000);
+      if (ch.t !== 'webauthn_challenge' || ch.op !== 'enroll') throw new Error('no-challenge');
+      var cred = await navigator.credentials.create({
+        publicKey: {
+          challenge: b64ToBytes(ch.challenge),
+          rp: { name: 'Arène des budtenders', id: RP_ID },
+          user: {
+            id: new TextEncoder().encode(tag),
+            name: tag,
+            displayName: tag
+          },
+          pubKeyCredParams: [{ type: 'public-key', alg: -7 }],
+          authenticatorSelection: {
+            authenticatorAttachment: 'platform',
+            userVerification: 'required',
+            residentKey: 'preferred'
+          },
+          attestation: 'none',
+          timeout: 60000
+        }
+      });
+      var r = cred.response;
+      send({
+        t: 'webauthn_enroll', token: token,
+        credential: {
+          id: cred.id,
+          rawId: bytesToB64(cred.rawId),
+          type: cred.type,
+          response: {
+            clientDataJSON: bytesToB64(r.clientDataJSON),
+            attestationObject: bytesToB64(r.attestationObject)
+          }
+        }
+      });
+      var ack = await waitFor(['webauthn_ok', 'auth_error'], 30000);
+      if (ack.t !== 'webauthn_ok') throw new Error('no-ack');
+      $('fpRow').classList.add('hidden');
+      $('fpDone').classList.remove('hidden');
+      setTimeout(finish, 1600);
+    } catch (e) {
+      /* Tout échec → on continue vers le jeu normalement. */
+      finish();
+    }
+  };
+}
+
+/* ---------- 2. Connexion par empreinte ---------- */
+async function doFingerprint() {
+  if (busy) return;
+  busy = true;
+  showErr('');
+  var pseudo = ($('pseudo').value || '').trim().replace(/\s+/g, ' ');
+  if (pseudo.length < 3) { showErr(T('fpNeedPseudo')); busy = false; return; }
+  var btn = $('btnFp');
+  btn.disabled = true;
+  try {
+    await connect();
+    send({ t: 'webauthn_login_challenge', gamertag: pseudo });
+    var ch = await waitFor(['webauthn_challenge', 'auth_error'], 30000);
+    if (ch.t === 'auth_error') { showErr(ch.msg || T('fpNoKey')); return; }
+    if (ch.op !== 'login') { showErr(T('fpFail')); return; }
+    var allow = (ch.allowCredentials || []).map(function (c) {
+      return { type: 'public-key', id: b64ToBytes(c.id) };
+    });
+    var assertion = await navigator.credentials.get({
+      publicKey: {
+        challenge: b64ToBytes(ch.challenge),
+        rpId: RP_ID,
+        allowCredentials: allow,
+        userVerification: 'required',
+        timeout: 60000
+      }
+    });
+    var ar = assertion.response;
+    send({
+      t: 'webauthn_login', gamertag: pseudo,
+      assertion: {
+        id: assertion.id,
+        rawId: bytesToB64(assertion.rawId),
+        type: assertion.type,
+        response: {
+          clientDataJSON: bytesToB64(ar.clientDataJSON),
+          authenticatorData: bytesToB64(ar.authenticatorData),
+          signature: bytesToB64(ar.signature),
+          userHandle: ar.userHandle ? bytesToB64(ar.userHandle) : null
+        }
+      }
+    });
+    var m = await waitFor(['auth_ok', 'auth_error'], 30000);
+    if (m.t !== 'auth_ok') { showErr(m.msg || T('fpFail')); return; }
+    /* Même stockage que le login classique, mais pas de flag
+       arena_first_time : ce n’est pas une première création. */
+    storeSession(m, false);
+    goToGame();
+  } catch (e) {
+    showErr(T('fpFail'));
+  } finally {
+    busy = false;
+    btn.disabled = false;
+  }
+}
+
+/* ---------- Init ---------- */
+document.getElementById('langFr').addEventListener('click', function () { setLang('fr'); });
+document.getElementById('langEn').addEventListener('click', function () { setLang('en'); });
+$('btnEnter').addEventListener('click', doEnter);
+$('btnFp').addEventListener('click', doFingerprint);
+$('pw').addEventListener('keydown', function (e) { if (e.key === 'Enter') doEnter(); });
+$('pseudo').addEventListener('keydown', function (e) { if (e.key === 'Enter') doEnter(); });
+try {
+  var tag = localStorage.getItem('arena_tag');
+  if (tag) $('pseudo').value = tag; /* pré-rempli : parcours empreinte = 1 clic */
+} catch (e) {}
+applyLang();
+/* Le bouton empreinte n’existe que là où la plateforme le permet. */
+platformAuthAvailable().then(function (ok) {
+  if (ok) $('btnFp').classList.remove('hidden');
+});
+</script>
 </body>
 </html>
