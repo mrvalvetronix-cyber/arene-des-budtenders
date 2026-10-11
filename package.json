@@ -1,8 +1,8 @@
 {
-  "name": "arene-des-budtenders",
+  "name": "arene-des-budtender",
   "version": "1.0.0",
   "description": "L’arène des budtender — jeu questionnaire multijoueur (MQTT + WebSocket)",
-  "main": "index.js",
+  "main": "server.js",
   "directories": {
     "test": "test"
   },
