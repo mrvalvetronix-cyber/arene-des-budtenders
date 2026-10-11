@@ -876,12 +876,12 @@
   "cat": "Terpènes"
  },
  {
-  "q": "Le humulène est un…?",
+  "q": "Le pinène doit son nom à l’arôme de quel arbre?",
   "options": [
-   "sesquiterpène",
-   "monoterpène",
-   "diterpène",
-   "triterpène"
+   "Pin",
+   "Chêne",
+   "Érable",
+   "Cèdre"
   ],
   "answer": 0,
   "difficulty": 1,
