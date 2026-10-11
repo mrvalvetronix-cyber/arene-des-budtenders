@@ -41,15 +41,41 @@ function loadBoard() {
   return { weekId: null, totals: {} };
 }
 
+/* Cache mémoire : currentBoard()/recordScores()/boardTop() sont appelés à
+   chaque message get_board et à chaque fin de partie. On évite la relecture
+   + le JSON.parse du fichier à chaque appel en le gardant en mémoire, avec
+   revalidation par stat (mtime/ctime/taille) pour détecter toute écriture
+   externe (autre processus, édition manuelle, tests). */
+let cache = null;
+let cacheStamp = null;
+function stampOf() {
+  try {
+    const s = fs.statSync(BOARD_FILE);
+    return { m: s.mtimeMs, c: s.ctimeMs, z: s.size };
+  } catch (e) { return null; }
+}
+function boardCached() {
+  const st = stampOf();
+  if (cache && st && cacheStamp &&
+      st.m === cacheStamp.m && st.c === cacheStamp.c && st.z === cacheStamp.z) {
+    return cache;
+  }
+  cache = loadBoard();
+  cacheStamp = st;
+  return cache;
+}
+
 function saveBoard(b) {
   try { fs.writeFileSync(BOARD_FILE, JSON.stringify(b)); }
   catch (e) { console.error('tableau hebdo — sauvegarde:', e.message); }
+  cache = b;
+  cacheStamp = stampOf();
 }
 
 // Retourne le tableau de la semaine en cours, en le réinitialisant si on a
 // changé de semaine (dimanche 00h01 heure de Toronto).
 function currentBoard() {
-  const b = loadBoard();
+  const b = boardCached();
   const id = currentWeekId();
   if (b.weekId !== id) {
     b.weekId = id;
