@@ -387,6 +387,10 @@ function sendState(room) { broadcast(room, snapshot(room)); }
 
 /* ---------- Déroulement (mode tour par tour) ---------- */
 function turnQuestion(item) {
+  if (item.kind === 'bank') {
+    // Questions de la banque du duel (972) : mêmes questions dans les 3 modes.
+    return { kind: 'quiz', source: item.cat, prompt: item.q, options: item.options, answer: item.answer, success: 'Bonne réponse!', fail: 'Pas cette fois — la prochaine sera la bonne.', reward: DATA.quizReward };
+  }
   if (item.kind === 'quiz') {
     const z = DATA.quiz[item.id];
     return { kind: 'quiz', source: z.source, prompt: z.q, options: z.a, answer: z.ok, success: z.fact, fail: 'Pas cette fois — la prochaine sera la bonne.', reward: DATA.quizReward };
@@ -881,12 +885,16 @@ function handleMessage(ctx, m) {
       sendState(room);
       return;
     }
+    // Simultané et tour par tour : deck de questions tirées de la banque du
+    // duel (même banque que le mode duel, selon la langue de la salle).
+    const bankDeck = () => shuffled(bankFor(room).slice()).slice(0, DATA.deckOrder.length)
+      .map(q => ({ kind: 'bank', q: q.q, options: q.options, answer: q.answer, cat: q.cat, difficulty: q.difficulty || 1 }));
     if (room.settings.mode === 'simu') {
-      room.deck = shuffled(DATA.deckOrder);
+      room.deck = bankDeck();
       broadcast(room, { t: 'start', mode: 'simu', deck: room.deck, shiftName: DATA.shiftName });
       launchSimuBots(room);
     } else {
-      room.deck = DATA.deckOrder.slice();
+      room.deck = bankDeck();
       room.turnOrder = shuffled([...room.players.keys()]);
       broadcast(room, { t: 'start', mode: 'tours', shiftName: DATA.shiftName, turnMs: DATA.turnMs });
       room.turnTimer = setTimeout(() => dealTurn(room), 1800);
